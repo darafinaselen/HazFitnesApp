@@ -1,5 +1,3 @@
-// Ini adalah isi file: src/constants/colors.js
-
 export default {
   blue50: '#F1F9FE',
   blue100: '#E1F2FD',
@@ -19,6 +17,7 @@ export default {
   red: '#FF0000', // Untuk error
   grey: '#A2A6AB', // Untuk teks sekunder
   placeholder: '#79747E',
+  bg_input: '#89CBE8',
 
   // Warna Semantik
   primary: '#1697D4',

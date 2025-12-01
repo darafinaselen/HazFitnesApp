@@ -1,9 +1,13 @@
 import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import AppNavigator from './src/navigation/AppNavigator';
 
-import SplashScreen from './src/screens/SplashScreen';
-
-const App = () => {
-  return <SplashScreen />;
+const App: React.FC = () => {
+  return (
+    <NavigationContainer>
+      <AppNavigator />
+    </NavigationContainer>
+  );
 };
 
 export default App;
