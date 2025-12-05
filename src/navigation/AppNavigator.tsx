@@ -19,6 +19,7 @@ import HomeScreen from '../screens/HomeScreen';
 import ProgramScreen from '../screens/ProgramScreen';
 import WorkoutProgramsScreen from '../screens/WorkoutProgramScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
+import WorkoutPlayerScreen from '../screens/WorkoutPlayerScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -92,6 +93,13 @@ export type RootStackParamList = {
     duration: number;
     category?: string;
     image?: any;
+    description: string;
+    onSave?: (id: string, newDuration: number) => void;
+  };
+  WorkoutPlayer: {
+    playlist: any[];
+    onProgressUpdate?: (percentage: number) => void;
+    initialIndex?: number;
   };
 };
 
@@ -244,6 +252,11 @@ const AppNavigator: React.FC = () => {
           headerShadowVisible: false,
           headerStyle: { backgroundColor: colors.white },
         }}
+      />
+      <Stack.Screen
+        name="WorkoutPlayer"
+        component={WorkoutPlayerScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
