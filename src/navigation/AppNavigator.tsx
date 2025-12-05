@@ -18,6 +18,7 @@ import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProgramScreen from '../screens/ProgramScreen';
 import WorkoutProgramsScreen from '../screens/WorkoutProgramScreen';
+import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -85,6 +86,13 @@ export type RootStackParamList = {
     programTitle: string;
   };
   WorkoutPrograms: undefined;
+  ExerciseDetail: {
+    exerciseId: string;
+    name: string;
+    duration: number;
+    category?: string;
+    image?: any;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -225,6 +233,17 @@ const AppNavigator: React.FC = () => {
         name="WorkoutPrograms"
         component={WorkoutProgramsScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ExerciseDetail"
+        component={ExerciseDetailScreen}
+        options={{
+          headerShown: true,
+          title: 'INSTRUCTIONS',
+          headerTintColor: colors.black,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: colors.white },
+        }}
       />
     </Stack.Navigator>
   );

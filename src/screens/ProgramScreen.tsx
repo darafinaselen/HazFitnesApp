@@ -24,6 +24,7 @@ import { FONT_FAMILY, FONT_SIZE } from '../constants/fonts';
 import PrimaryButton from '../components/PrimaryButton';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { formatDuration } from '../utils/timeHelper';
 
 // --- Placeholder Images ---
 const workoutThumb = require('../assets/images/splash.png');
@@ -47,13 +48,13 @@ const getProgramDataByLevel = (levelId: string) => {
         {
           id: '1w1',
           name: 'JUMPING JACKS',
-          duration: '00:30',
+          duration: '30',
           image: workoutThumb,
         },
         {
           id: '1w2',
           name: 'ARM CIRCLES',
-          duration: '00:30',
+          duration: '30',
           image: workoutThumb,
         },
       ],
@@ -62,7 +63,7 @@ const getProgramDataByLevel = (levelId: string) => {
         {
           id: '1e2',
           name: 'CHEST PRESS',
-          duration: '00:45',
+          duration: '45',
           image: workoutThumb,
         },
       ],
@@ -70,7 +71,7 @@ const getProgramDataByLevel = (levelId: string) => {
         {
           id: '1c1',
           name: 'ARM STRETCH',
-          duration: '00:30',
+          duration: '30',
           image: workoutThumb,
         },
       ],
@@ -83,19 +84,19 @@ const getProgramDataByLevel = (levelId: string) => {
         {
           id: '2w1',
           name: 'HIGH KNEES',
-          duration: '00:40',
+          duration: '40',
           image: workoutThumb,
         },
       ],
       exercises: [
-        { id: '2e1', name: 'SQUATS', duration: '00:45', image: workoutThumb },
-        { id: '2e2', name: 'LUNGES', duration: '00:40', image: workoutThumb },
+        { id: '2e1', name: 'SQUATS', duration: '45', image: workoutThumb },
+        { id: '2e2', name: 'LUNGES', duration: '40', image: workoutThumb },
       ],
       coolDown: [
         {
           id: '2c1',
           name: 'QUAD STRETCH',
-          duration: '00:40',
+          duration: '40',
           image: workoutThumb,
         },
       ],
@@ -108,25 +109,25 @@ const getProgramDataByLevel = (levelId: string) => {
         {
           id: '3w1',
           name: 'JUMP ROPE',
-          duration: '01:00',
+          duration: '60',
           image: workoutThumb,
         },
       ],
       exercises: [
-        { id: '3e1', name: 'BURPEES', duration: '00:40', image: workoutThumb },
+        { id: '3e1', name: 'BURPEES', duration: '40', image: workoutThumb },
         {
           id: '3e2',
           name: 'MOUNTAIN CLIMBERS',
-          duration: '00:30',
+          duration: '30',
           image: workoutThumb,
         },
-        { id: '3e3', name: 'PLANK', duration: '01:00', image: workoutThumb },
+        { id: '3e3', name: 'PLANK', duration: '60', image: workoutThumb },
       ],
       coolDown: [
         {
           id: '3c1',
           name: 'CHILD POSE',
-          duration: '01:00',
+          duration: '60',
           image: workoutThumb,
         },
       ],
@@ -169,22 +170,48 @@ const ExerciseItem = ({
   name,
   duration,
   image,
+  onPress,
 }: {
   name: string;
-  duration: string;
+  duration: number;
   image: ImageSourcePropType;
+  onPress: () => void;
 }) => (
-  <View style={styles.exerciseCard}>
+  <TouchableOpacity
+    style={styles.exerciseCard}
+    onPress={onPress}
+    activeOpacity={0.8}
+  >
     <Image source={image} style={styles.exerciseImage} />
     <View style={styles.exerciseInfo}>
       <Text style={styles.exerciseName}>{name}</Text>
-      <Text style={styles.exerciseDuration}>{duration}</Text>
+      <Text style={styles.exerciseDuration}>{formatDuration(duration)}</Text>
     </View>
-  </View>
+  </TouchableOpacity>
 );
 
-const ProgramSection = ({ title, data }: { title: string; data: any[] }) => {
+const ProgramSection = ({
+  title,
+  data,
+  workoutCategory,
+}: {
+  title: string;
+  data: any[];
+  workoutCategory: string;
+}) => {
   const [isOpen, setIsOpen] = useState(true);
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
+  const getCategoryName = () => {
+    if (title === 'WARM UP') {
+      return 'Warm Up';
+    } else if (title === 'COOL DOWN') {
+      return 'Cool Down';
+    } else {
+      return workoutCategory;
+    }
+  };
+
   if (!data || data.length === 0) return null;
 
   return (
@@ -202,6 +229,15 @@ const ProgramSection = ({ title, data }: { title: string; data: any[] }) => {
               name={item.name}
               duration={item.duration}
               image={item.image}
+              onPress={() =>
+                navigation.navigate('ExerciseDetail', {
+                  exerciseId: item.id.toString(),
+                  name: item.name,
+                  duration: item.duration,
+                  category: getCategoryName(),
+                  image: item.image,
+                })
+              }
             />
           ))}
         </View>
@@ -228,6 +264,11 @@ const ProgramScreen: React.FC = () => {
   }, [programId]);
 
   const currentProgram = programData[selectedDayIndex];
+  const workoutType = currentProgram.dayTitle.includes('UPPER')
+    ? 'Upper Body'
+    : currentProgram.dayTitle.includes('LOWER')
+    ? 'Lower Body'
+    : 'Full Body';
 
   const toggleDropdown = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -314,9 +355,21 @@ const ProgramScreen: React.FC = () => {
           </View>
 
           {/* SECTIONS */}
-          <ProgramSection title="WARM UP" data={currentProgram.warmUp} />
-          <ProgramSection title="WORKOUT" data={currentProgram.exercises} />
-          <ProgramSection title="COOL DOWN" data={currentProgram.coolDown} />
+          <ProgramSection
+            title="WARM UP"
+            data={currentProgram.warmUp}
+            workoutCategory={workoutType}
+          />
+          <ProgramSection
+            title="WORKOUT"
+            data={currentProgram.exercises}
+            workoutCategory={workoutType}
+          />
+          <ProgramSection
+            title="COOL DOWN"
+            data={currentProgram.coolDown}
+            workoutCategory={workoutType}
+          />
 
           {/* Spacer Bawah */}
           {/* <View style={{ height: 180 }} /> */}
