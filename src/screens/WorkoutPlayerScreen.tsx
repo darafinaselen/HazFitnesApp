@@ -15,7 +15,8 @@ import { FONT_FAMILY, FONT_SIZE } from '../constants/fonts';
 import TopProgressBar from '../components/player/TopProgressBar';
 import PlayerControls from '../components/player/PlayerControls';
 import { BackIcon, VolumeIcon } from '../components/player/PlayerIcons';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEvent } from 'expo';
 import QuitWorkoutModal from '../components/player/QuitWorkoutModal';
 import { VideoLoadingIndicator } from '../components/player/VideoLoadingIndicator';
 import { NetworkStatusIndicator } from '../components/player/NetworkStatusIndicator';
@@ -24,7 +25,6 @@ const WorkoutPlayerScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'WorkoutPlayer'>>();
   const { playlist, initialIndex } = route.params;
-  const videoRef = useRef(null);
 
   // --- STATE ---
   const [currentIndex, setCurrentIndex] = useState(initialIndex || 0);
@@ -32,8 +32,6 @@ const WorkoutPlayerScreen = () => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
-  const [videoLoading, setVideoLoading] = useState(false);
-  const [videoError, setVideoError] = useState<string | null>(null);
   const [videoRetryCount, setVideoRetryCount] = useState(0);
 
   const [countdown, setCountdown] = useState(5);
@@ -41,6 +39,17 @@ const WorkoutPlayerScreen = () => {
 
   const currentExercise = playlist[currentIndex];
   const progressPercent = (progress / currentExercise.duration) * 100;
+
+  // --- VIDEO PLAYER SETUP ---
+  const player = useVideoPlayer(currentExercise.video, (player) => {
+    player.loop = true;
+    player.muted = isMuted;
+  });
+
+  const { status, error } = useEvent(player, 'statusChange', { status: player.status });
+
+  const videoLoading = status === 'loading';
+  const videoError = status === 'error' ? (error?.message || 'Video failed to load') : null;
 
   const handleBackPress = useCallback(() => {
     setIsPlaying(false);
@@ -127,43 +136,24 @@ const WorkoutPlayerScreen = () => {
     setProgress(0);
   };
 
-  // --- VIDEO HANDLERS ---
-  const handleVideoLoadStart = () => {
-    console.log('Video loading started...');
-    setVideoLoading(true);
-    setVideoError(null);
-  };
-
-  const handleVideoLoad = () => {
-    console.log('Video loaded successfully');
-    setVideoLoading(false);
-    setVideoError(null);
-  };
-
-  const handleVideoError = (error: any) => {
-    const errorMessage = error?.message || 'Video failed to load. Check internet connection.';
-    console.log('Video error:', error);
-    setVideoLoading(false);
-    setVideoError(errorMessage);
-  };
-
   const handleRetryVideo = () => {
     console.log('Retrying video...');
-    setVideoError(null);
-    setVideoLoading(true);
-    setVideoRetryCount(prev => prev + 1);
+    player.replace(currentExercise.video);
   };
 
   // --- CONTROL VIDEO PLAYBACK ---
   useEffect(() => {
-    if (videoRef.current) {
-      if (isPlaying && !isGetReady && !isModalVisible) {
-        videoRef.current.playAsync?.();
-      } else {
-        videoRef.current.pauseAsync?.();
-      }
+    if (isPlaying && !isGetReady && !isModalVisible) {
+      player.play();
+    } else {
+      player.pause();
     }
-  }, [isPlaying, isGetReady, isModalVisible]);
+  }, [isPlaying, isGetReady, isModalVisible, player]);
+
+  // --- CONTROL MUTE ---
+  useEffect(() => {
+    player.muted = isMuted;
+  }, [isMuted, player]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -211,18 +201,11 @@ const WorkoutPlayerScreen = () => {
             <View style={styles.videoContainer}>
               {currentExercise.video ? (
                 <>
-                  <Video
-                    key={videoRetryCount}
-                    ref={videoRef}
-                    source={currentExercise.video}
+                  <VideoView
+                    player={player}
                     style={styles.videoStyle}
-                    resizeMode={ResizeMode.COVER}
-                    isLooping={true}
-                    shouldPlay={isPlaying}
-                    isMuted={isMuted}
-                    onLoadStart={handleVideoLoadStart}
-                    onLoad={handleVideoLoad}
-                    onError={handleVideoError}
+                    contentFit="cover"
+                    nativeControls={false}
                   />
                   <VideoLoadingIndicator
                     isLoading={videoLoading}
