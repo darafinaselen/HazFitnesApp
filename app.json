@@ -1,4 +1,27 @@
 {
-  "name": "HazlabFitnessApp",
-  "displayName": "HazlabFitnessApp"
+  "expo": {
+    "name": "Hazlab Fitness App",
+    "slug": "hazlab-fitness-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./src/assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hazlabfitnessapp"
+    },
+    "android": {
+      "package": "com.hazlabfitnessapp"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
 }
