@@ -9,13 +9,20 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
-import { FONT_FAMILY } from '../constants/fonts';
-import CustomBottomBar from '../components/CustomBottomBar';
-import color from '../constants/color';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { FONT_FAMILY } from '../constants/fonts';
+import CustomBottomBar from '../components/CustomBottomBar';
+import color from '../constants/color';
+import {
+  ClockIcon,
+  FireIconCal,
+  RunIcon,
+  FootIcon,
+  FireIconStreak,
+} from '../components/ReportIcons';
+import { SmallStatCard, MediumStatCard } from '../components/StatCards';
 
 const userProfileImg = require('../assets/images/splash.png');
 const squatBannerImg = require('../assets/images/splash.png');
@@ -31,60 +38,9 @@ const WEEKLY_DATA = [
   { day: 'SAT', height: 30, active: false },
 ];
 
-const ClockIcon = () => (
-  <Svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#DDFE06"
-    strokeWidth="2"
-  >
-    <Circle cx="12" cy="12" r="10" />
-    <Path d="M12 6v6l4 2" />
-  </Svg>
-);
-const FireIcon = () => (
-  <Svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#DDFE06"
-    strokeWidth="2"
-  >
-    <Path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.5-3z" />
-  </Svg>
-);
-const RunIcon = () => (
-  <Svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#DDFE06"
-    strokeWidth="2"
-  >
-    <Path d="M22 2l-3.3 8.9L14.6 9l-1.3-4.5c-.7-2.3-3.7-2.7-4.7-.5L5 14l3.5 7 4.5-3 1 4" />
-    <Circle cx="13" cy="4" r="2" />
-  </Svg>
-);
-const FootIcon = () => (
-  <Svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#DDFE06"
-    strokeWidth="2"
-  >
-    <Path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 11 3.8 11 8c0 1.25-.5 2-1.25 2H4.12" />
-    <Path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 13 7.8 13 12c0 1.25.5 2 1.25 2h5.63" />
-  </Svg>
-);
-
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
   return (
     <View style={styles.mainContainer}>
       <SafeAreaView style={styles.safeArea}>
@@ -105,49 +61,34 @@ const HomeScreen: React.FC = () => {
 
           {/* STATS ROW 1 */}
           <View style={styles.statsRow}>
-            <View style={styles.smallCard}>
-              <ClockIcon />
-              <Text style={styles.cardValue}>0</Text>
-              <Text style={styles.cardLabel}>MINUTES</Text>
-            </View>
-            <View style={styles.smallCard}>
-              <FireIcon />
-              <Text style={styles.cardValue}>3.115 KCAL</Text>
-              <Text style={styles.cardLabel}>CAL BURN</Text>
-            </View>
-            <View style={styles.smallCard}>
-              <RunIcon />
-              <Text style={styles.cardValue}>20</Text>
-              <Text style={styles.cardLabel}>WORKOUT</Text>
-            </View>
+            <SmallStatCard Icon={ClockIcon} value="0" label="MINUTES" />
+            <SmallStatCard
+              Icon={FireIconCal}
+              value="3.115 KCAL"
+              label="CAL BURN"
+            />
+            <SmallStatCard Icon={RunIcon} value="20" label="WORKOUT" />
           </View>
 
           {/* STATS ROW 2 */}
           <View style={styles.statsRow}>
-            <View style={styles.mediumCard}>
-              <FootIcon />
-              <Text style={styles.cardLabelMedium}>STEPS</Text>
-              <Text style={styles.cardSubLabel}>0/463 M</Text>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBarFill, { width: '40%' }]} />
-              </View>
-            </View>
-            <View style={styles.mediumCard}>
-              <FireIcon />
-              <Text style={styles.cardLabelMedium}>STREAK</Text>
-              <Text style={styles.cardSubLabel}>0 DAYS</Text>
-              <View style={styles.streakDotsContainer}>
-                {[...Array(7)].map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.streakDot,
-                      i === 0 ? styles.streakDotActive : null,
-                    ]}
-                  />
-                ))}
-              </View>
-            </View>
+            {/* CARD STEPS DENGAN NAVIGASI */}
+            <MediumStatCard
+              Icon={FootIcon}
+              label="STEPS"
+              subLabel="0/463 M"
+              type="steps"
+              progress={0.4}
+              onPress={() => navigation.navigate('StepsTracker')} // <-- INI NAVIGASINYA
+            />
+
+            {/* CARD STREAK */}
+            <MediumStatCard
+              Icon={FireIconStreak}
+              label="STREAK"
+              subLabel="0 DAYS"
+              type="streak"
+            />
           </View>
 
           {/* DAILY TARGET CHART */}
@@ -179,7 +120,14 @@ const HomeScreen: React.FC = () => {
           <View style={styles.planSection}>
             <View style={styles.planHeader}>
               <Text style={styles.planTitle}>PERSONALIZED PLAN</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Program')}>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('Program', {
+                    programId: 'beginner',
+                    programTitle: 'BEGINNER',
+                  })
+                }
+              >
                 <Text style={styles.viewAll}>VIEW ALL</Text>
               </TouchableOpacity>
             </View>
@@ -247,70 +195,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     gap: 8,
   },
-  smallCard: {
-    flex: 1,
-    backgroundColor: color.blue900,
-    borderRadius: 16,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  mediumCard: {
-    flex: 1,
-    backgroundColor: color.blue900,
-    borderRadius: 16,
-    paddingVertical: 15,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    minHeight: 110,
-  },
-  cardValue: {
-    color: '#FFFFFF',
-    fontFamily: FONT_FAMILY.MontserratBold,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  cardLabel: {
-    color: '#A2A6AB',
-    fontFamily: FONT_FAMILY.MontserratMedium,
-    fontSize: 12,
-    textTransform: 'uppercase',
-    textAlign: 'center',
-  },
-  cardLabelMedium: {
-    color: '#FFFFFF',
-    fontFamily: FONT_FAMILY.MontserratBold,
-    fontSize: 18,
-    textTransform: 'uppercase',
-    marginTop: 5,
-  },
-  cardSubLabel: {
-    color: '#A2A6AB',
-    fontFamily: FONT_FAMILY.MontserratMedium,
-    fontSize: 12,
-    marginBottom: 5,
-    textTransform: 'uppercase',
-  },
-  // --- Progress & Streak ---
-  progressBarContainer: {
-    width: '80%',
-    height: 6,
-    backgroundColor: '#0B3650',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: { height: '100%', backgroundColor: '#A2A6AB' },
-  streakDotsContainer: { flexDirection: 'row', gap: 4 },
-  streakDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#5A7585',
-  },
-  streakDotActive: { backgroundColor: '#FFFFFF' },
   // --- Chart ---
   chartCard: {
     backgroundColor: '#10486A',

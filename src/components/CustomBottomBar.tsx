@@ -15,7 +15,6 @@ const ACTIVE_COLOR = '#1697D4';
 const INACTIVE_COLOR = '#BDE4FA';
 
 // --- ICONS (SVG) ---
-// Props color agar warnanya bisa berubah dinamis
 const HomeIcon = ({ color }: { color: string }) => (
   <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
     <Path
@@ -67,11 +66,8 @@ const { width } = Dimensions.get('window');
 const CustomBottomBar = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
-
-  // Helper untuk cek halaman aktif
   const isActive = (screenName: string) => route.name === screenName;
 
-  // Helper untuk navigasi (untuk menghindari navigasi ke halaman yang sama)
   const navigateTo = (screenName: string) => {
     if (route.name !== screenName) {
       navigation.navigate(screenName);
@@ -161,7 +157,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: '100%',
     height: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.80)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',

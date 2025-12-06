@@ -16,10 +16,15 @@
     "@react-navigation/stack": "^7.6.2",
     "react": "19.1.1",
     "react-native": "0.82.1",
+    "react-native-calendars": "^1.1313.0",
+    "react-native-gesture-handler": "^2.29.1",
+    "react-native-maps": "^1.26.0",
+    "react-native-reanimated": "^4.2.0",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "^4.18.0",
     "react-native-svg": "^15.15.0",
-    "react-native-video": "^6.18.0"
+    "react-native-video": "^6.18.0",
+    "react-native-worklets": "^0.7.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

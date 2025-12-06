@@ -20,6 +20,9 @@ import ProgramScreen from '../screens/ProgramScreen';
 import WorkoutProgramsScreen from '../screens/WorkoutProgramScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import WorkoutPlayerScreen from '../screens/WorkoutPlayerScreen';
+import StepsTrackerScreen from '../screens/StepsTrackerScreen';
+import ReportScreen from '../screens/ReportScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -101,6 +104,9 @@ export type RootStackParamList = {
     onProgressUpdate?: (percentage: number) => void;
     initialIndex?: number;
   };
+  StepsTracker: undefined;
+  Report: undefined;
+  History: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -256,6 +262,21 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen
         name="WorkoutPlayer"
         component={WorkoutPlayerScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="StepsTracker"
+        component={StepsTrackerScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Report"
+        component={ReportScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="History"
+        component={HistoryScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
