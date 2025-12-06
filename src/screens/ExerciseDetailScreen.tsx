@@ -11,8 +11,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
-
-// Import komponen & helper yang sudah kita siapkan
 import { FONT_FAMILY } from '../constants/fonts';
 import DurationControl from '../components/DurationControl';
 import { formatDuration } from '../utils/timeHelper';
@@ -22,33 +20,32 @@ const ExerciseDetailScreen: React.FC = () => {
   const navigation = useNavigation();
 
   // 1. Ambil data yang dikirim dari ProgramScreen
-  // duration di sini tipe datanya NUMBER (detik)
-  const { name, duration, category, image } = route.params;
+  const { name, duration, category, image, description, onSave, exerciseId } =
+    route.params;
 
   // 2. State untuk menyimpan perubahan waktu sementara
-  // Default value diambil dari database/params (duration)
   const [currentSeconds, setCurrentSeconds] = useState<number>(duration);
 
   // LOGIC MATEMATIKA:
   const handleIncrease = () => {
-    setCurrentSeconds(prev => prev + 10); // Tambah 10 detik
+    setCurrentSeconds(prev => prev + 5);
   };
 
   const handleDecrease = () => {
-    setCurrentSeconds(prev => (prev > 10 ? prev - 10 : prev)); // Kurang 10 detik, minimal 10s
+    setCurrentSeconds(prev => (prev > 5 ? prev - 5 : prev));
   };
 
   const handleReset = () => {
-    setCurrentSeconds(duration); // Balikin ke angka awal
+    setCurrentSeconds(duration);
   };
 
   const handleSave = () => {
-    // Nanti di sini kita simpan ke database atau state global
+    if (onSave) {
+      onSave(exerciseId, currentSeconds);
+    }
     console.log(
       `Latihan ${name} disimpan dengan durasi: ${currentSeconds} detik`,
     );
-
-    // Simulasi sukses & kembali
     navigation.goBack();
   };
 
@@ -65,9 +62,8 @@ const ExerciseDetailScreen: React.FC = () => {
             <Text style={styles.categoryText}>Category: {category}</Text>
           </View>
 
-          {/* MEDIA PLACEHOLDER (GAMBAR/VIDEO) */}
+          {/* MEDIA PLACEHOLDER (GAMBAR) */}
           <View style={styles.mediaContainer}>
-            {/* Jika image ada, tampilkan. Jika tidak, kotak abu-abu */}
             {image ? (
               <Image
                 source={image}
@@ -80,7 +76,6 @@ const ExerciseDetailScreen: React.FC = () => {
           </View>
 
           {/* DURATION CONTROL COMPONENT */}
-          {/* Kita convert detik (number) ke string "MM:SS" biar component bisa baca */}
           <DurationControl
             duration={formatDuration(currentSeconds)}
             onIncrease={handleIncrease}
@@ -89,15 +84,7 @@ const ExerciseDetailScreen: React.FC = () => {
 
           {/* DESCRIPTION */}
           <Text style={styles.descTitle}>Description</Text>
-          <Text style={styles.loremText}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-            aliquip ex ea commodo consequat.
-            {'\n\n'}
-            Duis aute irure dolor in reprehenderit in voluptate velit esse
-            cillum dolore eu fugiat nulla pariatur.
-          </Text>
+          <Text style={styles.loremText}>{description}</Text>
         </ScrollView>
 
         {/* BOTTOM BUTTONS (Reset & Save) */}
@@ -118,14 +105,14 @@ const ExerciseDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#F5F7FA', // Background abu muda
+    backgroundColor: '#F5F7FA',
   },
   safeArea: {
     flex: 1,
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100, // Space untuk footer button
+    paddingBottom: 100,
   },
   titleContainer: {
     alignItems: 'center',
@@ -188,7 +175,7 @@ const styles = StyleSheet.create({
   },
   btnReset: {
     flex: 1,
-    backgroundColor: '#87C1DE', // Biru muda
+    backgroundColor: '#87C1DE',
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',
@@ -206,7 +193,7 @@ const styles = StyleSheet.create({
   },
   btnSave: {
     flex: 1,
-    backgroundColor: '#1697D4', // Biru tua (Primary)
+    backgroundColor: '#1697D4',
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',

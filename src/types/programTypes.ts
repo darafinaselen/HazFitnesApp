@@ -1,0 +1,20 @@
+import { ImageSourcePropType } from 'react-native';
+
+export interface Exercise {
+  id: string;
+  name: string;
+  duration: number;
+  image: ImageSourcePropType;
+  video: { uri: string };
+  description: string;
+  category?: string;
+}
+
+export interface ProgramDay {
+  id: number;
+  dayTitle: string;
+  subtitle: string;
+  warmUp: Exercise[];
+  exercises: Exercise[];
+  coolDown: Exercise[];
+}

@@ -26,12 +26,12 @@ const WeightScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const bmiResult: BmiResult | null = useMemo(() => {
     const weightNum = parseFloat(weight);
-    if (!weightNum) return null;
+    if (!weightNum) {return null;}
     return calculateBMI(weightNum, height);
   }, [weight, height]);
 
   const handleContinue = () => {
-    if (!bmiResult) return;
+    if (!bmiResult) {return;}
 
     navigation.navigate('HealthConditions', {
       gender,

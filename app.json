@@ -18,7 +18,11 @@
       "bundleIdentifier": "com.hazlabfitnessapp"
     },
     "android": {
-      "package": "com.hazlabfitnessapp"
+      "package": "com.hazlabfitnessapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/splash.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "plugins": [
       "expo-font"
