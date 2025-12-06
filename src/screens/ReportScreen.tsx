@@ -125,7 +125,14 @@ const ReportScreen: React.FC = () => {
             last30Days={reportData.weight.diff}
             average={reportData.weight.average}
           />
-          <HeightChartCard value={reportData.height} />
+          <HeightChartCard
+            value={reportData.height}
+            onEdit={() =>
+              navigation.navigate('HeightInput', {
+                currentHeight: reportData.height,
+              })
+            }
+          />
 
           <BMIChartCard
             value={reportData.bmi.value}

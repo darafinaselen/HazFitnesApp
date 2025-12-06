@@ -77,9 +77,13 @@ export const WeightChartCard: React.FC<WeightProps> = ({
 };
 
 // --- 2. HEIGHT CHART CARD ---
-export const HeightChartCard: React.FC<{ value: string }> = ({ value }) => {
+interface HeightProps {
+  value: string;
+  onEdit?: () => void;
+}
+export const HeightChartCard: React.FC<HeightProps> = ({ value, onEdit }) => {
   return (
-    <ProfileCard title="HEIGHT (CM)" onEdit={() => console.log('Edit Height')}>
+    <ProfileCard title="HEIGHT (CM)" onEdit={onEdit}>
       <View style={styles.heightContent}>
         <Text style={styles.heightLabel}>Current Height</Text>
         <Text style={styles.heightValue}>{value} CM</Text>
