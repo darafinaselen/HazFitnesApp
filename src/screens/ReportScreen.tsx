@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -8,6 +15,7 @@ import { FONT_FAMILY } from '../constants/fonts';
 import color from '../constants/color';
 import CustomBottomBar from '../components/CustomBottomBar';
 import {
+  BackIcon,
   ClockIcon,
   RunIcon,
   FootIcon,
@@ -21,13 +29,11 @@ import {
   HeightChartCard,
   BMIChartCard,
 } from '../components/ReportCharts';
-
-// 1. IMPORT FUNGSI HELPER YANG SUDAH KAMU BUAT
 import { calculateBMI, BmiLevel } from '../utils/bmiHelper';
 
 // --- DUMMY DATA (Simulation Database) ---
 const USER_DATA = {
-  height: 170, // CM
+  height: 170,
   weightHistory: [
     { date: '2025-11-01', value: 50.5 },
     { date: '2025-11-15', value: 49.8 },
@@ -82,7 +88,11 @@ const ReportScreen: React.FC = () => {
         <StatusBar barStyle="light-content" backgroundColor={color.blue900} />
 
         <View style={styles.headerTitleContainer}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <BackIcon />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>YOUR REPORT</Text>
+          <View style={{ width: 24 }} />
         </View>
 
         <ScrollView
@@ -158,6 +168,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingVertical: 15,
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   headerTitle: {

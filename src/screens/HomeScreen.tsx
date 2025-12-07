@@ -79,7 +79,7 @@ const HomeScreen: React.FC = () => {
               subLabel="0/463 M"
               type="steps"
               progress={0.4}
-              onPress={() => navigation.navigate('StepsTracker')} // <-- INI NAVIGASINYA
+              onPress={() => navigation.navigate('StepsTracker')}
             />
 
             {/* CARD STREAK */}

@@ -25,6 +25,7 @@ import ReportScreen from '../screens/ReportScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import WeightHistoryScreen from '../screens/WeightHistoryScreen';
 import HeightInputScreen from '../screens/HeightInputScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -111,6 +112,7 @@ export type RootStackParamList = {
   History: undefined;
   WeightHistory: undefined;
   HeightInput: { currentHeight: string };
+  Profil: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -291,6 +293,11 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen
         name="HeightInput"
         component={HeightInputScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Profil"
+        component={ProfileScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
