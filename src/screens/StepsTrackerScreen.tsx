@@ -8,7 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { FONT_FAMILY } from '../constants/fonts';
@@ -63,6 +63,49 @@ const StatItem = ({ value, label }: { value: string; label: string }) => (
   </View>
 );
 
+const leafletHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { height: 100vh; width: 100vw; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    // 1. Inisialisasi Peta (Koordinat Jakarta)
+    var map = L.map('map', { zoomControl: false }).setView([-6.200000, 106.816666], 15);
+
+    // 2. Tambah Layer OSM (Gratis)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 3. Tambah Marker Start
+    L.marker([-6.200000, 106.816666]).addTo(map)
+      .bindPopup('Start Point').openPopup();
+
+    // 4. Tambah Garis Jalur Lari (Biru)
+    var latlngs = [
+      [-6.200000, 106.816666],
+      [-6.201000, 106.817000],
+      [-6.202000, 106.818000],
+      [-6.202500, 106.819000]
+    ];
+    var polyline = L.polyline(latlngs, {color: '#10486A', weight: 5}).addTo(map);
+    
+    // Zoom ke jalur lari
+    map.fitBounds(polyline.getBounds());
+  </script>
+</body>
+</html>
+`;
+
 const StepsTrackerScreen: React.FC = () => {
   const navigation = useNavigation();
 
@@ -88,22 +131,14 @@ const StepsTrackerScreen: React.FC = () => {
 
       {/* MAP SECTION */}
       <View style={styles.mapContainer}>
-        {/* <MapView
-          provider={PROVIDER_GOOGLE} // Hapus jika ingin pakai Apple Maps di iOS
+        <WebView
+          originWhitelist={['*']}
+          source={{ html: leafletHtml }}
           style={styles.map}
-          initialRegion={{
-            latitude: 37.78825, // Contoh koordinat (San Francisco seperti gambar)
-            longitude: -122.4324,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-          customMapStyle={[]} // Bisa diisi JSON style custom google maps
-        >
-          {/* Contoh Marker User 
-          <Marker coordinate={{ latitude: 37.78825, longitude: -122.4324 }} />
-        </MapView> */}
+          scrollEnabled={false}
+        />
 
-        <View
+        {/* <View
           style={[
             styles.map,
             {
@@ -116,7 +151,7 @@ const StepsTrackerScreen: React.FC = () => {
           <Text style={{ color: '#888' }}>
             Peta Belum Aktif (Butuh API Key)
           </Text>
-        </View>
+        </View> */}
 
         {/* FLOATING CONTROLS (Bottom Sheet) */}
         <View style={styles.bottomSheet}>
