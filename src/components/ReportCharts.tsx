@@ -1,5 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  Dimensions,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -7,6 +14,9 @@ import { FONT_FAMILY } from '../constants/fonts';
 import color from '../constants/color';
 import BMIScale from './dataInput/BMIScale';
 import { BmiLevel } from '../utils/bmiHelper';
+import WeightLineChart from '../components/grafik/WeightLineChart';
+import { CloseIcon } from './ReportIcons';
+import { weightHistoryData } from '../utils/dummyData';
 
 // --- SHARED WRAPPER ---
 const ProfileCard: React.FC<{
@@ -40,39 +50,114 @@ export const WeightChartCard: React.FC<WeightProps> = ({
   average,
 }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const [modalVisible, setModalVisible] = React.useState(false);
+
+  const currentMonthData = useMemo(() => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // 1. Filter hanya bulan & tahun ini
+    const filtered = weightHistoryData
+      .filter(item => {
+        const d = new Date(item.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // 2. Map ke format chart
+    return filtered.map(item => ({
+      value: item.weight,
+      label: new Date(item.date).getDate().toString().padStart(2, '0'),
+    }));
+  }, []);
+
+  // Mini Chart: Ambil 7 data terakhir dari bulan ini
+  const miniChartData = useMemo(() => {
+    return currentMonthData.slice(-7);
+  }, [currentMonthData]);
+
+  // Full Chart (Modal): Ambil SEMUA data bulan ini
+  const fullChartData = currentMonthData;
+
+  const screenWidth = Dimensions.get('window').width;
+  const modalChartWidth = screenWidth - 80;
 
   return (
-    <ProfileCard
-      title="WEIGHT (KG)"
-      onEdit={() => navigation.navigate('WeightHistory')}
-    >
-      <View style={styles.weightContent}>
-        <Text style={styles.weightValue}>{current}</Text>
-        <View style={styles.weightStats}>
-          <View style={styles.statCol}>
-            <Text style={styles.weightValueSmall}>{current}</Text>
-            <Text style={styles.weightLabel}>Current Weight</Text>
+    <>
+      <ProfileCard
+        title="WEIGHT (KG)"
+        onEdit={() => navigation.navigate('WeightHistory')}
+      >
+        <View style={styles.weightContent}>
+          <Text style={styles.weightValue}>{current}</Text>
+          <View style={styles.weightStats}>
+            <View style={styles.statCol}>
+              <Text style={styles.weightValueSmall}>{current}</Text>
+              <Text style={styles.weightLabel}>Current Weight</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[styles.weightValueSmall, { color: '#FF8C00' }]}>
+                {last30Days}
+              </Text>
+              <Text style={styles.weightLabel}>Last 30 Days</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={styles.weightValueSmall}>{average}</Text>
+              <Text style={styles.weightLabel}>Average</Text>
+            </View>
           </View>
-          <View style={styles.statCol}>
-            <Text style={[styles.weightValueSmall, { color: '#FF8C00' }]}>
-              {last30Days}
-            </Text>
-            <Text style={styles.weightLabel}>Last 30 Days</Text>
-          </View>
-          <View style={styles.statCol}>
-            <Text style={styles.weightValueSmall}>{average}</Text>
-            <Text style={styles.weightLabel}>Average</Text>
-          </View>
-        </View>
 
-        {/* Placeholder Chart */}
-        <View style={styles.chartPlaceholder}>
-          <Text style={styles.chartPlaceholderText}>
-            Weight Chart Visualization
-          </Text>
+          {/* Chart */}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setModalVisible(true)}
+            style={styles.chartWrapper}
+          >
+            {/* Tampilkan Chart MINI  */}
+            <WeightLineChart data={miniChartData} isMini={true} />
+
+            <Text style={styles.tapText}>Tap chart to expand details</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-    </ProfileCard>
+      </ProfileCard>
+
+      {/* --- POP-UP MODAL (FULL SCREEN CHART) --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Header Modal */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Weight History</Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.closeBtn}
+              >
+                <CloseIcon />
+              </TouchableOpacity>
+            </View>
+
+            {/* Chart FULL*/}
+            <View style={{ height: 320, width: '100%' }}>
+              <WeightLineChart
+                data={fullChartData}
+                isMini={false}
+                width={modalChartWidth}
+              />
+            </View>
+
+            <Text style={styles.modalHint}>
+              Swipe left/right to view more history
+            </Text>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 };
 
@@ -181,14 +266,10 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.MontserratMedium,
     fontSize: 10,
   },
-  chartPlaceholder: {
-    height: 120,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chartPlaceholderText: { color: '#8CAAB9', fontSize: 12 },
+  // chartWrapper: {
+  //   marginTop: 10,
+  //   backgroundColor: 'transparent',
+  // },
   heightContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -217,5 +298,65 @@ const styles = StyleSheet.create({
     color: '#5A7585',
     textAlign: 'center',
     marginTop: 10,
+  },
+  chartWrapper: {
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 10,
+    // Shadow tipis
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  tapText: {
+    textAlign: 'center',
+    color: '#ccc',
+    fontSize: 10,
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+
+  // MODAL STYLES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: FONT_FAMILY.MontserratBold,
+    color: color.blue900,
+  },
+  closeBtn: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalHint: {
+    marginTop: 10,
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 12,
   },
 });

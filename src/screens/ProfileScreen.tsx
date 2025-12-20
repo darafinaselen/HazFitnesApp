@@ -82,7 +82,7 @@ const ProfileScreen: React.FC = () => {
 
           <TouchableOpacity
             style={styles.statsCard}
-            onPress={() => navigation.navigate('Report')}
+            onPress={() => navigation.navigate('Statistics')}
           >
             <View style={styles.statsLeft}>
               <StatsIconBig size={60} />
