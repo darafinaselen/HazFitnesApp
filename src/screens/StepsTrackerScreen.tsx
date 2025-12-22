@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   StatusBar,
   TouchableOpacity,
-  Dimensions,
+  Platform,
+  Alert,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -13,6 +15,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { FONT_FAMILY } from '../constants/fonts';
 import color from '../constants/color';
+import Geolocation from 'react-native-geolocation-service';
 
 // --- ICONS ---
 const BackIcon = () => (
@@ -78,29 +81,33 @@ const leafletHtml = `
 <body>
   <div id="map"></div>
   <script>
-    // 1. Inisialisasi Peta (Koordinat Jakarta)
-    var map = L.map('map', { zoomControl: false }).setView([-6.200000, 106.816666], 15);
+    // Inisialisasi Peta (Default Zoom Out dulu)
+    var map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+    var userMarker = null;
 
-    // 2. Tambah Layer OSM (Gratis)
+    // Layer OSM
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // 3. Tambah Marker Start
-    L.marker([-6.200000, 106.816666]).addTo(map)
-      .bindPopup('Start Point').openPopup();
-
-    // 4. Tambah Garis Jalur Lari (Biru)
-    var latlngs = [
-      [-6.200000, 106.816666],
-      [-6.201000, 106.817000],
-      [-6.202000, 106.818000],
-      [-6.202500, 106.819000]
-    ];
-    var polyline = L.polyline(latlngs, {color: '#10486A', weight: 5}).addTo(map);
-    
-    // Zoom ke jalur lari
-    map.fitBounds(polyline.getBounds());
+    // Fungsi ini dipanggil dari React Native untuk update lokasi marker
+    function updateMapLocation(lat, lng) {
+      map.setView([lat, lng], 16); // Zoom otomatis ke lokasi user
+      
+      if (!userMarker) {
+        // Buat marker baru jika belum ada
+        userMarker = L.circleMarker([lat, lng], {
+          color: 'white', 
+          fillColor: '#10486A', 
+          fillOpacity: 1, 
+          weight: 3, 
+          radius: 10 
+        }).addTo(map);
+      } else {
+        // Geser marker jika sudah ada
+        userMarker.setLatLng([lat, lng]);
+      }
+    }
   </script>
 </body>
 </html>
@@ -108,6 +115,77 @@ const leafletHtml = `
 
 const StepsTrackerScreen: React.FC = () => {
   const navigation = useNavigation();
+  const webViewRef = useRef<WebView>(null);
+
+  // --- 1. LOGIC IZIN LOKASI (ANDROID) ---
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Izinkan Lokasi',
+            message:
+              'Aplikasi membutuhkan akses lokasi untuk menampilkan posisi lari kamu.',
+            buttonNeutral: 'Nanti',
+            buttonNegative: 'Tolak',
+            buttonPositive: 'Izinkan',
+          },
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          return true;
+        } else {
+          Alert.alert(
+            'Izin Ditolak',
+            'Lokasi tidak dapat ditampilkan tanpa izin.',
+          );
+          return false;
+        }
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // --- 2. LOGIC AMBIL KOORDINAT GPS ---
+  const getCurrentLocation = () => {
+    Geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords;
+
+        const script =
+          'updateMapLocation(' + latitude + ', ' + longitude + '); true;';
+
+        if (webViewRef.current) {
+          webViewRef.current.injectJavaScript(script);
+        }
+      },
+      error => {
+        console.log(error.code, error.message);
+        Alert.alert('Gagal ambil lokasi', error.message);
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 10000,
+        forceRequestLocation: true,
+        showLocationDialog: true,
+      },
+    );
+  };
+
+  // Jalan otomatis saat layar dibuka
+  useEffect(() => {
+    const init = async () => {
+      const hasPermission = await requestLocationPermission();
+      if (hasPermission) {
+        getCurrentLocation();
+      }
+    };
+    init();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -123,7 +201,10 @@ const StepsTrackerScreen: React.FC = () => {
             <BackIcon />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>STEPS</Text>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={getCurrentLocation}
+            style={styles.iconButton}
+          >
             <LocationPinIcon />
           </TouchableOpacity>
         </View>
@@ -132,26 +213,12 @@ const StepsTrackerScreen: React.FC = () => {
       {/* MAP SECTION */}
       <View style={styles.mapContainer}>
         <WebView
+          ref={webViewRef}
           originWhitelist={['*']}
           source={{ html: leafletHtml }}
           style={styles.map}
           scrollEnabled={false}
         />
-
-        {/* <View
-          style={[
-            styles.map,
-            {
-              backgroundColor: '#E0E0E0',
-              justifyContent: 'center',
-              alignItems: 'center',
-            },
-          ]}
-        >
-          <Text style={{ color: '#888' }}>
-            Peta Belum Aktif (Butuh API Key)
-          </Text>
-        </View> */}
 
         {/* FLOATING CONTROLS (Bottom Sheet) */}
         <View style={styles.bottomSheet}>
