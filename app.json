@@ -5,13 +5,8 @@
     "version": "0.0.1",
     "orientation": "portrait",
     "scheme": "exp+hazlabfitnessapp",
-    "platforms": [
-      "ios",
-      "android"
-    ],
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "platforms": ["ios", "android"],
+    "assetBundlePatterns": ["**/*"],
     "android": {
       "package": "com.anonymous.hazlabfitnessapp"
     }
