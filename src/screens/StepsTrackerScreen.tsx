@@ -151,6 +151,14 @@ const StepsTrackerScreen: React.FC = () => {
 
   // --- 2. LOGIC AMBIL KOORDINAT GPS ---
   const getCurrentLocation = () => {
+    // Guard against missing native module (e.g., dev client not rebuilt)
+    if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
+      Alert.alert(
+        'Modul Lokasi Tidak Tersedia',
+        'Aplikasi perlu dibangun ulang agar modul lokasi native tersedia (jalankan "expo run:android").',
+      );
+      return;
+    }
     Geolocation.getCurrentPosition(
       position => {
         const { latitude, longitude } = position.coords;

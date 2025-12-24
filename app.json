@@ -1,4 +1,19 @@
 {
-  "name": "HazlabFitnessApp",
-  "displayName": "HazlabFitnessApp"
+  "expo": {
+    "name": "HazlabFitnessApp",
+    "slug": "hazlabfitnessapp",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "scheme": "exp+hazlabfitnessapp",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.anonymous.hazlabfitnessapp"
+    }
+  }
 }
