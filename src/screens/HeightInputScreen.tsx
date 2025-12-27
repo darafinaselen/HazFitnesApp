@@ -28,8 +28,6 @@ type HeightInputRouteProp = RouteProp<RootStackParamList, 'HeightInput'>;
 const HeightInputScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<HeightInputRouteProp>();
-
-  // Ambil data tinggi saat ini dari params (kalau ada), kalau gak ada default '0'
   const initialHeight = route.params?.currentHeight || '';
   const [height, setHeight] = useState(initialHeight);
 
@@ -64,7 +62,7 @@ const HeightInputScreen: React.FC = () => {
             placeholder="0"
             placeholderTextColor={color.blue900}
             maxLength={3}
-            autoFocus={true} // Otomatis muncul keyboard pas masuk
+            autoFocus={true}
             textAlign="center"
           />
 
@@ -121,11 +119,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -50, // Sedikit ke atas biar pas di tengah visual
+    marginTop: -50,
   },
   input: {
     fontFamily: FONT_FAMILY.MontserratBold,
-    fontSize: 80, // Ukuran font besar seperti di desain
+    fontSize: 80,
     color: color.blue900,
     width: '100%',
     textAlign: 'center',
@@ -133,7 +131,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   unitBadge: {
-    backgroundColor: '#81C3D7', // Warna biru muda ala tombol di gambar
+    backgroundColor: '#81C3D7',
     paddingVertical: 8,
     paddingHorizontal: 30,
     borderRadius: 20,
@@ -147,12 +145,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 30,
-    paddingBottom: 40, // Jarak dari bottom bar
+    paddingBottom: 40,
     gap: 20,
   },
   discardButton: {
     flex: 1,
-    backgroundColor: '#81C3D7', // Warna biru muda
+    backgroundColor: '#81C3D7',
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',
@@ -164,7 +162,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1,
-    backgroundColor: '#1E88E5', // Warna biru tua (sesuaikan dengan color.blue900 kamu)
+    backgroundColor: '#1E88E5',
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',

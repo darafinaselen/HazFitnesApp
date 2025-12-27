@@ -109,7 +109,7 @@ const ProfileScreen: React.FC = () => {
             <MenuItem
               icon={<ReminderIcon color={color.blue900} />}
               label="Reminders"
-              onPress={() => console.log('Reminders')}
+              onPress={() => navigation.navigate('Reminders')}
             />
             <View style={styles.divider} />
             <MenuItem
