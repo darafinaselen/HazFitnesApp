@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   StatusBar,
   Alert,
   BackHandler,
@@ -17,7 +16,8 @@ import TopProgressBar from '../components/player/TopProgressBar';
 import PlayerControls from '../components/player/PlayerControls';
 import { BackIcon, VolumeIcon } from '../components/player/PlayerIcons';
 import color from '../constants/color';
-import Video from 'react-native-video';
+// import Video from 'react-native-video';
+import { Video, ResizeMode } from 'expo-av';
 import QuitWorkoutModal from '../components/player/QuitWorkoutModal';
 
 const WorkoutPlayerScreen = () => {
@@ -36,7 +36,8 @@ const WorkoutPlayerScreen = () => {
   const [progress, setProgress] = useState(0);
 
   const currentExercise = playlist[currentIndex];
-  const progressPercent = (progress / currentExercise.duration) * 100;
+  const safeDuration = currentExercise.duration || 1;
+  const progressPercent = (progress / safeDuration) * 100;
 
   const handleBackPress = useCallback(() => {
     setIsPlaying(false);
@@ -107,7 +108,7 @@ const WorkoutPlayerScreen = () => {
     } else {
       setIsPlaying(false);
       if (onProgressUpdate) onProgressUpdate(0);
-      Alert.alert('WORKOUT COMPLETE! 🎉', 'Congratulations!', [
+      Alert.alert('WORKOUT COMPLETE!', 'Congratulations!', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     }
@@ -152,7 +153,6 @@ const WorkoutPlayerScreen = () => {
       {/* 3. CONTENT AREA */}
       <View style={styles.content}>
         {isGetReady ? (
-          // === LAYAR GET READY ===
           <View style={styles.getReadyContainer}>
             <Text style={styles.getReadyTitle}>READY TO START</Text>
             <Text style={styles.getReadyTimer}>{countdown}</Text>
@@ -171,18 +171,17 @@ const WorkoutPlayerScreen = () => {
         ) : (
           // === LAYAR VIDEO PLAYER ===
           <View style={styles.playerWrapper}>
-            {/* A. VIDEO AREA */}
+            {/* VIDEO AREA */}
             <View style={styles.videoContainer}>
               {currentExercise.video ? (
                 <Video
-                  source={currentExercise.video} // Data video dari dummy
+                  source={currentExercise.video}
                   style={styles.videoStyle}
-                  resizeMode="cover"
-                  repeat={true}
-                  paused={!isPlaying} // Ikut tombol pause
-                  muted={isMuted} // Ikut tombol mute
-                  playInBackground={false}
-                  playWhenInactive={false}
+                  resizeMode={ResizeMode.COVER}
+                  isLooping={true}
+                  shouldPlay={isPlaying}
+                  isMuted={isMuted}
+                  useNativeControls={false}
                 />
               ) : (
                 // Fallback kalau video ga ada
@@ -201,9 +200,8 @@ const WorkoutPlayerScreen = () => {
               )}
             </View>
 
-            {/* B. INFO & CONTROLS (Layout Baru) */}
+            {/* INFO & CONTROLS */}
             <View style={styles.controlsArea}>
-              {/* Judul (Kiri) dan Timer (Kanan) */}
               <View style={styles.infoRow}>
                 <Text style={styles.exerciseName} numberOfLines={1}>
                   {currentExercise.name}
@@ -217,7 +215,7 @@ const WorkoutPlayerScreen = () => {
                 </View>
               </View>
 
-              {/* Progress Bar (Garis Biru) */}
+              {/* Progress Bar */}
               <View style={styles.progressBarBackground}>
                 <View
                   style={[

@@ -1,4 +1,3 @@
-// src/screens/dataInput/WeightScreen.tsx
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -7,6 +6,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '../../constants/color';
@@ -46,45 +46,51 @@ const WeightScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>WHAT'S YOUR WEIGHT?</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={weight}
-              onChangeText={setWeight}
-              placeholder="0"
-              placeholderTextColor={colors.blue950}
-              keyboardType="number-pad"
-              maxLength={3}
-              underlineColorAndroid="transparent"
-              cursorColor={colors.primary}
-            />
-            <Text style={styles.unit}>KG</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>WHAT'S YOUR WEIGHT?</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={weight}
+                onChangeText={setWeight}
+                placeholder="0"
+                placeholderTextColor={colors.blue950}
+                keyboardType="number-pad"
+                maxLength={3}
+                underlineColorAndroid="transparent"
+                cursorColor={colors.primary}
+              />
+              <Text style={styles.unit}>KG</Text>
+            </View>
+
+            {bmiResult && (
+              <View style={styles.bmiContainer}>
+                <Text style={styles.bmiTitle}>Body Mass Index (BMI)</Text>
+                <BMIScale level={bmiResult.level} />
+                <Text style={styles.bmiInfo}>
+                  Your BMI is {bmiResult.bmiValue} which is considered{' '}
+                  <Text style={styles.bmiLevelText}>{bmiResult.level}</Text>.
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Tampilkan BMI HANYA jika sudah dihitung */}
-          {bmiResult && (
-            <View style={styles.bmiContainer}>
-              <Text style={styles.bmiTitle}>Body Mass Index (BMI)</Text>
-              {/* Ini adalah komponen bar 4-level Anda */}
-              <BMIScale level={bmiResult.level} />
-              <Text style={styles.bmiInfo}>
-                Your BMI is {bmiResult.bmiValue} which is considered{' '}
-                <Text style={styles.bmiLevelText}>{bmiResult.level}</Text>.
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <PrimaryButton
-          label="CONTINUE"
-          onPress={handleContinue}
-          disabled={!bmiResult}
-        />
+          <View style={styles.buttonContainer}>
+            <PrimaryButton
+              label="CONTINUE"
+              onPress={handleContinue}
+              disabled={!bmiResult}
+            />
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -97,12 +103,19 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'space-between',
+    padding: 20,
   },
   content: {
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 20,
+  },
+  buttonContainer: {
+    marginTop: 20,
+    marginBottom: 10,
   },
   title: {
     color: colors.primary,
@@ -111,7 +124,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     textAlign: 'center',
-    marginBottom: 60,
+    marginBottom: 40,
   },
   inputContainer: {
     alignItems: 'center',
@@ -133,7 +146,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginTop: -15,
   },
-  // --- STYLE BARU UNTUK KOTAK BMI ---
   bmiContainer: {
     marginTop: 40,
     width: '100%',

@@ -6,6 +6,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '../../constants/color';
@@ -30,31 +31,39 @@ const AgeScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>HOW OLD ARE YOU?</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={age}
-              onChangeText={setAge}
-              placeholder="0"
-              placeholderTextColor={colors.blue950}
-              keyboardType="number-pad"
-              maxLength={3}
-              cursorColor={colors.primary}
-            />
-            <Text style={styles.unit}>YEARS</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>HOW OLD ARE YOU?</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={age}
+                onChangeText={setAge}
+                placeholder="0"
+                placeholderTextColor={colors.blue950}
+                keyboardType="number-pad"
+                maxLength={3}
+                cursorColor={colors.primary}
+              />
+              <Text style={styles.unit}>YEARS</Text>
+            </View>
           </View>
-        </View>
 
-        <PrimaryButton
-          label="CONTINUE"
-          onPress={handleContinue}
-          disabled={!age}
-        />
+          <View style={styles.buttonContainer}>
+            <PrimaryButton
+              label="CONTINUE"
+              onPress={handleContinue}
+              disabled={!age}
+            />
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -67,12 +76,19 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'space-between',
+    padding: 20,
   },
   content: {
-    marginTop: -30,
+    marginTop: 20,
     alignItems: 'center',
+  },
+  buttonContainer: {
+    marginTop: 20,
+    marginBottom: 10,
   },
   title: {
     color: colors.primary,
@@ -81,10 +97,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     textAlign: 'center',
-    marginBottom: 60,
+    marginBottom: 40,
   },
   inputContainer: {
-    marginTop: 30,
+    marginTop: 10,
     alignItems: 'center',
   },
   input: {

@@ -6,6 +6,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '../../constants/color';
@@ -31,42 +32,50 @@ const HeightScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>HOW TALL ARE YOU?</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={height}
-              onChangeText={setHeight}
-              placeholder="0"
-              placeholderTextColor={colors.blue950}
-              keyboardType="number-pad"
-              maxLength={3}
-              underlineColorAndroid="transparent"
-              cursorColor={colors.primary}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>HOW TALL ARE YOU?</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={height}
+                onChangeText={setHeight}
+                placeholder="0"
+                placeholderTextColor={colors.blue950}
+                keyboardType="number-pad"
+                maxLength={3}
+                underlineColorAndroid="transparent"
+                cursorColor={colors.primary}
+              />
+              <Text style={styles.unit}>CM</Text>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Text style={styles.infoTitle}>
+                Calculate Your Body Mass Index (BMI)
+              </Text>
+              <Text style={styles.infoText}>
+                BMI assesses body weight relative to height but doesn't
+                differentiate between fat and muscle...
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <PrimaryButton
+              label="CONTINUE"
+              onPress={handleContinue}
+              disabled={!height}
             />
-            <Text style={styles.unit}>CM</Text>
           </View>
-
-          <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>
-              Calculate Your Body Mass Index (BMI)
-            </Text>
-            <Text style={styles.infoText}>
-              BMI assesses body weight relative to height but doesn't
-              differentiate between fat and muscle...
-            </Text>
-          </View>
-        </View>
-
-        <PrimaryButton
-          label="CONTINUE"
-          onPress={handleContinue}
-          disabled={!height}
-        />
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -79,13 +88,19 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'space-between',
+    padding: 20,
   },
   content: {
-    // Hapus 'marginTop: -30'
     alignItems: 'center',
-    paddingTop: 40, // Beri jarak dari header
+    paddingTop: 20,
+  },
+  buttonContainer: {
+    marginTop: 20,
+    marginBottom: 10,
   },
   title: {
     color: colors.primary,
@@ -94,10 +109,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     textAlign: 'center',
-    marginBottom: 60,
+    marginBottom: 40,
   },
   inputContainer: {
-    // Hapus 'marginTop: 50'
     alignItems: 'center',
   },
   input: {
@@ -110,20 +124,19 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.PoppinsSemiBold,
     fontSize: FONT_SIZE.md,
     color: colors.black,
-    backgroundColor: colors.bg_input || '#E1F2FD', // Fallback
+    backgroundColor: colors.bg_input || '#E1F2FD',
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
     overflow: 'hidden',
     marginTop: -15,
   },
-  // --- STYLE BARU UNTUK KOTAK INFO ---
   infoBox: {
     marginTop: 40,
     backgroundColor: colors.blue50,
     borderRadius: 10,
     padding: 15,
-    width: '100%', // Penuhi lebar
+    width: '100%',
   },
   infoTitle: {
     fontFamily: FONT_FAMILY.PoppinsSemiBold,
