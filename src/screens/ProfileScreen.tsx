@@ -23,6 +23,7 @@ import {
   FeedbackIcon,
   LogoutIcon,
 } from '../components/profil/ProfileIcons';
+import { Linking, Alert } from 'react-native';
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -52,9 +53,40 @@ const MenuItem: React.FC<MenuItemProps> = ({
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
+  const handleFeedback = async () => {
+    const email = 'support@hazlab.com';
+    const subject = 'App Feedback';
+    const body = 'Hi Team, I have some feedback...';
+
+    const url = `mailto:${email}?subject=${subject}&body=${body}`;
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No email app found on this device.');
+      }
+    } catch (err) {
+      console.error('An error occurred', err);
+    }
+  };
+
   const handleLogout = () => {
-    console.log('Logout Pressed');
-    // navigation.replace('LoginScreen');
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          // TODO: Clear Auth Token / Storage here
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        },
+      },
+    ]);
   };
 
   return (
@@ -89,8 +121,7 @@ const ProfileScreen: React.FC = () => {
               <View style={styles.statsTextContainer}>
                 <Text style={styles.statsTitle}>Statistics</Text>
                 <Text style={styles.statsDesc}>
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                  do
+                  Keep track of your body weight changes over time.
                 </Text>
               </View>
             </View>
@@ -115,7 +146,7 @@ const ProfileScreen: React.FC = () => {
             <MenuItem
               icon={<FeedbackIcon color={color.blue900} />}
               label="Feedback"
-              onPress={() => console.log('Feedback')}
+              onPress={handleFeedback}
               isLast
             />
           </View>
