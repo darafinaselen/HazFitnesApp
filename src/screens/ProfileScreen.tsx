@@ -103,7 +103,7 @@ const ProfileScreen: React.FC = () => {
             <MenuItem
               icon={<EditIcon color={color.blue900} />}
               label="Edit Profil"
-              onPress={() => console.log('Edit Profil')}
+              onPress={() => navigation.navigate('ProfileEdit')}
             />
             <View style={styles.divider} />
             <MenuItem
