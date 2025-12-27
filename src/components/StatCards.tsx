@@ -26,7 +26,13 @@ interface MediumStatCardProps {
   label: string;
   subLabel: string;
   type: 'steps' | 'streak';
-  progress?: number; // 0.0 to 1.0 (for steps)
+
+  // Props Dinamis Steps
+  currentSteps?: number;
+  targetSteps?: number;
+
+  // Props Dinamis Streak
+  streakDays?: number;
   onPress?: () => void;
 }
 
@@ -35,9 +41,12 @@ export const MediumStatCard: React.FC<MediumStatCardProps> = ({
   label,
   subLabel,
   type,
-  progress = 0,
+  currentSteps = 0,
+  targetSteps = 1,
+  streakDays = 0,
   onPress,
 }) => {
+  const stepProgress = currentSteps / targetSteps;
   const content = (
     <>
       <Icon />
@@ -46,7 +55,10 @@ export const MediumStatCard: React.FC<MediumStatCardProps> = ({
       {type === 'steps' && (
         <View style={styles.progressBarContainer}>
           <View
-            style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
+            style={[
+              styles.progressBarFill,
+              { width: `${Math.min(stepProgress * 100, 100)}%` },
+            ]}
           />
         </View>
       )}
@@ -55,7 +67,10 @@ export const MediumStatCard: React.FC<MediumStatCardProps> = ({
           {[...Array(7)].map((_, i) => (
             <View
               key={i}
-              style={[styles.streakDot, i < 3 ? styles.streakDotActive : null]}
+              style={[
+                styles.streakDot,
+                i < streakDays ? styles.streakDotActive : null,
+              ]}
             />
           ))}
         </View>
