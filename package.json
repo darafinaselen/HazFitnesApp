@@ -9,7 +9,7 @@
     "ios:rn": "react-native run-ios",
     "lint": "eslint .",
     "prebuild": "expo prebuild",
-    "start": "expo start --dev-client --go",
+    "start": "expo start --dev-client",
     "start:rn": "react-native start",
     "test": "jest"
   },
