@@ -1,70 +1,15 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  StatusBar,
-  TouchableOpacity,
-  Platform,
-  Alert,
-  PermissionsAndroid,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, StatusBar, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
-import Svg, { Path, Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
-import { FONT_FAMILY } from '../constants/fonts';
-import color from '../constants/color';
-import Geolocation from 'react-native-geolocation-service';
-
-// --- ICONS ---
-const BackIcon = () => (
-  <Svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#10486A"
-    strokeWidth="2"
-  >
-    <Path d="M19 12H5M12 19l-7-7 7-7" />
-  </Svg>
-);
-
-const LocationPinIcon = () => (
-  <Svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="#10486A"
-    stroke="#10486A"
-    strokeWidth="2"
-  >
-    <Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-    <Circle cx="12" cy="10" r="3" fill="#FFF" />
-  </Svg>
-);
-
-const PauseIcon = () => (
-  <Svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="white"
-    stroke="white"
-    strokeWidth="2"
-  >
-    <Path d="M10 9v6m4-6v6" strokeLinecap="round" />
-  </Svg>
-);
-
-// --- COMPONENTS ---
-const StatItem = ({ value, label }: { value: string; label: string }) => (
-  <View style={styles.statItem}>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
+import * as Location from 'expo-location';
+import {
+  getDistanceFromLatLonInKm,
+  formatTime,
+  calculatePace,
+} from '../utils/trackerHelper';
+import TrackerHeader from '../components/stepsTracker/TrackerHeader';
+import TrackerStatsSheet from '../components/stepsTracker/TrackerStatsSheet';
 
 const leafletHtml = `
 <!DOCTYPE html>
@@ -73,40 +18,40 @@ const leafletHtml = `
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    body { margin: 0; padding: 0; }
-    #map { height: 100vh; width: 100vw; }
-  </style>
+  <style> body { margin: 0; padding: 0; } #map { height: 100vh; width: 100vw; } </style>
 </head>
 <body>
   <div id="map"></div>
   <script>
-    // Inisialisasi Peta (Default Zoom Out dulu)
-    var map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+    var map = L.map('map', { zoomControl: false }).setView([0, 0], 16);
     var userMarker = null;
+    var routeLine = null;
 
-    // Layer OSM
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Fungsi ini dipanggil dari React Native untuk update lokasi marker
+    routeLine = L.polyline([], {color: '#1697D4', weight: 5}).addTo(map);
+
     function updateMapLocation(lat, lng) {
-      map.setView([lat, lng], 16); // Zoom otomatis ke lokasi user
-      
+      var newLatLng = new L.LatLng(lat, lng);
+      map.setView(newLatLng, 16);
       if (!userMarker) {
-        // Buat marker baru jika belum ada
-        userMarker = L.circleMarker([lat, lng], {
-          color: 'white', 
-          fillColor: '#10486A', 
-          fillOpacity: 1, 
-          weight: 3, 
-          radius: 10 
-        }).addTo(map);
+        userMarker = L.circleMarker(newLatLng, { color: 'white', fillColor: '#10486A', fillOpacity: 1, weight: 3, radius: 8 }).addTo(map);
       } else {
-        // Geser marker jika sudah ada
-        userMarker.setLatLng([lat, lng]);
+        userMarker.setLatLng(newLatLng);
       }
+    }
+    
+    function addRoutePoint(lat, lng) {
+        var newLatLng = new L.LatLng(lat, lng);
+        map.setView(newLatLng, 16);
+        if (!userMarker) {
+            userMarker = L.circleMarker(newLatLng, { color: 'white', fillColor: '#10486A', fillOpacity: 1, weight: 3, radius: 8 }).addTo(map);
+        } else {
+            userMarker.setLatLng(newLatLng);
+        }
+        routeLine.addLatLng(newLatLng);
     }
   </script>
 </body>
@@ -117,253 +62,163 @@ const StepsTrackerScreen: React.FC = () => {
   const navigation = useNavigation();
   const webViewRef = useRef<WebView>(null);
 
-  // --- 1. LOGIC IZIN LOKASI (ANDROID) ---
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Izinkan Lokasi',
-            message:
-              'Aplikasi membutuhkan akses lokasi untuk menampilkan posisi lari kamu.',
-            buttonNeutral: 'Nanti',
-            buttonNegative: 'Tolak',
-            buttonPositive: 'Izinkan',
-          },
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          return true;
-        } else {
-          Alert.alert(
-            'Izin Ditolak',
-            'Lokasi tidak dapat ditampilkan tanpa izin.',
-          );
-          return false;
-        }
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
+  // State
+  const [isRunning, setIsRunning] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [distance, setDistance] = useState(0);
+  const [calories, setCalories] = useState(0);
+  const [pace, setPace] = useState('0\'00"');
+  const [loading, setLoading] = useState(false);
+
+  // Refs
+  const lastLocationRef = useRef<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
+    null,
+  );
+
+  // Logic Timer
+  useEffect(() => {
+    let interval: any;
+    if (isRunning) {
+      interval = setInterval(() => {
+        setTimer(prev => prev + 1);
+      }, 1000);
     }
-    return true;
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  // Logic Center Map (Manual)
+  const getCurrentLocation = async () => {
+    setLoading(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Izin Ditolak', 'Mohon izinkan lokasi.');
+        return;
+      }
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const { latitude, longitude } = location.coords;
+
+      const script = `updateMapLocation(${latitude}, ${longitude}); true;`;
+      webViewRef.current?.injectJavaScript(script);
+      lastLocationRef.current = { latitude, longitude };
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // --- 2. LOGIC AMBIL KOORDINAT GPS ---
-  const getCurrentLocation = () => {
-    // Guard against missing native module (e.g., dev client not rebuilt)
-    if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
-      Alert.alert(
-        'Modul Lokasi Tidak Tersedia',
-        'Aplikasi perlu dibangun ulang agar modul lokasi native tersedia (jalankan "expo run:android").',
-      );
+  // Logic Start/Stop Tracking
+  const startTracking = async () => {
+    setLoading(true);
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Izin Ditolak', 'Mohon izinkan lokasi.');
+      setLoading(false);
       return;
     }
-    Geolocation.getCurrentPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
 
-        const script =
-          'updateMapLocation(' + latitude + ', ' + longitude + '); true;';
+    setIsRunning(true);
+    setLoading(false);
 
-        if (webViewRef.current) {
-          webViewRef.current.injectJavaScript(script);
-        }
-      },
-      error => {
-        console.log(error.code, error.message);
-        Alert.alert('Gagal ambil lokasi', error.message);
-      },
+    locationSubscriptionRef.current = await Location.watchPositionAsync(
       {
-        enableHighAccuracy: false,
-        timeout: 15000,
-        maximumAge: 10000,
-        forceRequestLocation: true,
-        showLocationDialog: true,
+        accuracy: Location.Accuracy.High,
+        timeInterval: 2000,
+        distanceInterval: 5,
+      },
+      location => {
+        const { latitude, longitude } = location.coords;
+        const script = `addRoutePoint(${latitude}, ${longitude}); true;`;
+        webViewRef.current?.injectJavaScript(script);
+
+        if (lastLocationRef.current) {
+          const newDist = getDistanceFromLatLonInKm(
+            lastLocationRef.current.latitude,
+            lastLocationRef.current.longitude,
+            latitude,
+            longitude,
+          );
+          setDistance(prevDist => {
+            const totalDist = prevDist + newDist;
+            setCalories(Math.round(totalDist * 60));
+            return totalDist;
+          });
+        }
+        lastLocationRef.current = { latitude, longitude };
       },
     );
   };
 
-  // Jalan otomatis saat layar dibuka
+  const stopTracking = () => {
+    setIsRunning(false);
+    locationSubscriptionRef.current?.remove();
+    locationSubscriptionRef.current = null;
+  };
+
+  const toggleTracking = () => {
+    if (isRunning) stopTracking();
+    else startTracking();
+  };
+
+  // Hitung Pace
   useEffect(() => {
-    const init = async () => {
-      const hasPermission = await requestLocationPermission();
-      if (hasPermission) {
-        getCurrentLocation();
-      }
-    };
-    init();
+    const newPace = calculatePace(timer, distance);
+    setPace(newPace);
+  }, [timer, distance]);
+
+  // Init
+  useEffect(() => {
+    getCurrentLocation();
   }, []);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
 
-      {/* HEADER */}
-      <SafeAreaView style={styles.headerContainer} edges={['top']}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.iconButton}
-          >
-            <BackIcon />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>STEPS</Text>
-          <TouchableOpacity
-            onPress={getCurrentLocation}
-            style={styles.iconButton}
-          >
-            <LocationPinIcon />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      {/* 1. HEADER COMPONENT */}
+      <TrackerHeader
+        onBack={() => {
+          stopTracking();
+          navigation.goBack();
+        }}
+        onCenterMap={getCurrentLocation}
+        loading={loading}
+      />
 
-      {/* MAP SECTION */}
       <View style={styles.mapContainer}>
         <WebView
           ref={webViewRef}
           originWhitelist={['*']}
           source={{ html: leafletHtml }}
-          style={styles.map}
+          style={[styles.map, { opacity: 0.99 }]}
           scrollEnabled={false}
         />
 
-        {/* FLOATING CONTROLS (Bottom Sheet) */}
-        <View style={styles.bottomSheet}>
-          {/* Timer Floating Pill */}
-          <View style={styles.timerPill}>
-            <Text style={styles.timerText}>00 : 22 : 00</Text>
-            <View style={styles.divider} />
-            <TouchableOpacity>
-              <PauseIcon />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.timerLabel}>Duration</Text>
-
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <StatItem value="10 KM" label="Distance (KM)" />
-            <StatItem value="180" label="Calories" />
-            <StatItem value="20:20" label="Avg. Pace" />
-          </View>
-        </View>
+        {/* STATS SHEET COMPONENT */}
+        <TrackerStatsSheet
+          isRunning={isRunning}
+          timerString={formatTime(timer)}
+          distance={distance}
+          calories={calories}
+          pace={pace}
+          onToggleTracking={toggleTracking}
+        />
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF',
-  },
-  // Header
-  headerContainer: {
-    backgroundColor: '#FFF',
-    zIndex: 10,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  headerTitle: {
-    fontFamily: FONT_FAMILY.MontserratBold,
-    fontSize: 18,
-    color: '#10486A',
-    textTransform: 'uppercase',
-  },
-  iconButton: {
-    padding: 5,
-  },
-
-  // Map
-  mapContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  // Bottom Sheet / Controls
-  bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingTop: 70,
-    paddingBottom: 40,
-    paddingHorizontal: 30,
-    alignItems: 'center',
-
-    // Shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 20,
-  },
-  timerPill: {
-    backgroundColor: '#10486A',
-    borderRadius: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    position: 'absolute',
-    alignSelf: 'center',
-    top: 10,
-
-    // Shadow for pill
-    shadowColor: '#10486A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  timerText: {
-    color: '#FFF',
-    fontFamily: FONT_FAMILY.MontserratBold,
-    fontSize: 20,
-    marginRight: 15,
-  },
-  divider: {
-    width: 1,
-    height: 20,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    marginRight: 15,
-  },
-  timerLabel: {
-    color: '#A2A6AB',
-    fontSize: 12,
-    marginBottom: 20,
-    fontFamily: FONT_FAMILY.MontserratMedium,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    color: '#10486A',
-    fontSize: 18,
-    fontFamily: FONT_FAMILY.MontserratBold,
-    marginBottom: 4,
-  },
-  statLabel: {
-    color: '#A2A6AB',
-    fontSize: 12,
-    fontFamily: FONT_FAMILY.MontserratMedium,
-  },
+  container: { flex: 1, backgroundColor: '#FFF' },
+  mapContainer: { flex: 1, position: 'relative' },
+  map: { ...StyleSheet.absoluteFillObject },
 });
 
 export default StepsTrackerScreen;

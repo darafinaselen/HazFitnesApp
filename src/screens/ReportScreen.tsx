@@ -30,15 +30,39 @@ import {
   BMIChartCard,
 } from '../components/ReportCharts';
 import { calculateBMI, BmiLevel } from '../utils/bmiHelper';
+import { DailyData } from '../components/DailyTargetChart';
 
 // --- DUMMY DATA (Simulation Database) ---
 const USER_DATA = {
-  height: 170,
+  user: {
+    name: 'MEECHEL BERNANDO',
+    minutes: 45, // Total menit workout hari ini
+    calories: 3115, // Total kalori hari ini
+    workoutCount: 20, // Total workout yang sudah selesai
+    height: 170,
+  },
+  steps: {
+    current: 2500, // Langkah hari ini
+    target: 5000, // Target langkah harian
+  },
+  streak: {
+    days: 4, // Streak aktif saat ini (4 hari)
+  },
   weightHistory: [
     { date: '2025-11-01', value: 50.5 },
     { date: '2025-11-15', value: 49.8 },
     { date: '2025-12-07', value: 50.0 },
   ],
+  // Data Chart: Value (Total Kalori Harian) vs Target (dari AI)
+  weeklyHistory: [
+    { day: 'SUN', value: 1200, target: 2000 }, // value dalam Kcal
+    { day: 'MON', value: 2100, target: 2000 },
+    { day: 'TUE', value: 2500, target: 2200 }, // Target naik
+    { day: 'WED', value: 1000, target: 2200 }, // Masih dikit
+    { day: 'THU', value: 1800, target: 2200 },
+    { day: 'FRI', value: 2300, target: 2200 },
+    { day: 'SAT', value: 500, target: 2200 },
+  ] as DailyData[],
 };
 
 const ReportScreen: React.FC = () => {
@@ -49,7 +73,7 @@ const ReportScreen: React.FC = () => {
     // 1. Get Latest Data
     const currentWeight =
       USER_DATA.weightHistory[USER_DATA.weightHistory.length - 1].value;
-    const currentHeight = USER_DATA.height;
+    const currentHeight = USER_DATA.user.height;
 
     // 2. Calculate BMI
     const bmiResult = calculateBMI(currentWeight, currentHeight);
@@ -101,13 +125,21 @@ const ReportScreen: React.FC = () => {
         >
           {/* STATS ROW 1 */}
           <View style={styles.statsRow}>
-            <SmallStatCard Icon={ClockIcon} value="0" label="MINUTES" />
+            <SmallStatCard
+              Icon={ClockIcon}
+              value={`${USER_DATA.user.minutes}`}
+              label="MINUTES"
+            />
             <SmallStatCard
               Icon={FireIconCal}
-              value="3.115 KCAL"
+              value={`${(USER_DATA.user.calories / 1000).toFixed(1)}K KCAL`}
               label="CAL BURN"
             />
-            <SmallStatCard Icon={RunIcon} value="20" label="WORKOUT" />
+            <SmallStatCard
+              Icon={RunIcon}
+              value={`${USER_DATA.user.workoutCount}`}
+              label="WORKOUT"
+            />
           </View>
 
           {/* STATS ROW 2 */}
@@ -115,20 +147,21 @@ const ReportScreen: React.FC = () => {
             <MediumStatCard
               Icon={FootIcon}
               label="STEPS"
-              subLabel="0/463 M"
+              subLabel={`${USER_DATA.steps.current}/${USER_DATA.steps.target} M`}
               type="steps"
-              progress={0.4}
+              currentSteps={USER_DATA.steps.current}
+              targetSteps={USER_DATA.steps.target}
               onPress={() => navigation.navigate('StepsTracker')}
             />
             <MediumStatCard
               Icon={FireIconStreak}
               label="STREAK"
-              subLabel="0 DAYS"
+              subLabel={`${USER_DATA.streak.days} DAYS`}
               type="streak"
+              streakDays={USER_DATA.streak.days}
             />
           </View>
 
-          {/* DAILY TARGET CHART */}
           <DailyTargetChartCard />
           <WeightChartCard
             current={reportData.weight.current}

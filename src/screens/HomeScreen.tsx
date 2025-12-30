@@ -23,20 +23,37 @@ import {
   FireIconStreak,
 } from '../components/ReportIcons';
 import { SmallStatCard, MediumStatCard } from '../components/StatCards';
+import DailyTargetChart, { DailyData } from '../components/DailyTargetChart';
 
 const userProfileImg = require('../assets/images/splash.png');
 const squatBannerImg = require('../assets/images/splash.png');
 
 // --- DUMMY DATA ---
-const WEEKLY_DATA = [
-  { day: 'SUN', height: 40, active: false },
-  { day: 'MON', height: 70, active: false },
-  { day: 'TUE', height: 100, active: true },
-  { day: 'WED', height: 50, active: false },
-  { day: 'THU', height: 60, active: false },
-  { day: 'FRI', height: 80, active: false },
-  { day: 'SAT', height: 30, active: false },
-];
+const USER_DATA = {
+  user: {
+    name: 'MEECHEL BERNANDO',
+    minutes: 45, // Total menit workout hari ini
+    calories: 3115, // Total kalori hari ini
+    workoutCount: 20, // Total workout yang sudah selesai
+  },
+  steps: {
+    current: 2500, // Langkah hari ini
+    target: 5000, // Target langkah harian
+  },
+  streak: {
+    days: 4, // Streak aktif saat ini (4 hari)
+  },
+  // Data Chart: Value (Total Kalori Harian) vs Target (dari AI)
+  weeklyHistory: [
+    { day: 'SUN', value: 1200, target: 2000 }, // value dalam Kcal
+    { day: 'MON', value: 2100, target: 2000 },
+    { day: 'TUE', value: 2500, target: 2200 }, // Target naik
+    { day: 'WED', value: 1000, target: 2200 }, // Masih dikit
+    { day: 'THU', value: 1800, target: 2200 },
+    { day: 'FRI', value: 2300, target: 2200 },
+    { day: 'SAT', value: 500, target: 2200 },
+  ] as DailyData[],
+};
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -55,30 +72,38 @@ const HomeScreen: React.FC = () => {
             <Image source={userProfileImg} style={styles.profileImage} />
             <View style={styles.headerTextContainer}>
               <Text style={styles.welcomeText}>WELLCOME BACK,</Text>
-              <Text style={styles.userName}>MEECHEL BERNANDO</Text>
+              <Text style={styles.userName}>{USER_DATA.user.name}</Text>
             </View>
           </View>
 
           {/* STATS ROW 1 */}
           <View style={styles.statsRow}>
-            <SmallStatCard Icon={ClockIcon} value="0" label="MINUTES" />
+            <SmallStatCard
+              Icon={ClockIcon}
+              value={`${USER_DATA.user.minutes}`}
+              label="MINUTES"
+            />
             <SmallStatCard
               Icon={FireIconCal}
-              value="3.115 KCAL"
+              value={`${USER_DATA.user.calories} KCAL`}
               label="CAL BURN"
             />
-            <SmallStatCard Icon={RunIcon} value="20" label="WORKOUT" />
+            <SmallStatCard
+              Icon={RunIcon}
+              value={`${USER_DATA.user.workoutCount}`}
+              label="WORKOUT"
+            />
           </View>
 
           {/* STATS ROW 2 */}
           <View style={styles.statsRow}>
-            {/* CARD STEPS DENGAN NAVIGASI */}
             <MediumStatCard
               Icon={FootIcon}
               label="STEPS"
-              subLabel="0/463 M"
+              subLabel={`${USER_DATA.steps.current}/${USER_DATA.steps.target} M`}
               type="steps"
-              progress={0.4}
+              currentSteps={USER_DATA.steps.current}
+              targetSteps={USER_DATA.steps.target}
               onPress={() => navigation.navigate('StepsTracker')}
             />
 
@@ -86,35 +111,18 @@ const HomeScreen: React.FC = () => {
             <MediumStatCard
               Icon={FireIconStreak}
               label="STREAK"
-              subLabel="0 DAYS"
+              subLabel={`${USER_DATA.streak.days} DAYS`}
               type="streak"
+              streakDays={USER_DATA.streak.days}
             />
           </View>
 
           {/* DAILY TARGET CHART */}
-          <View style={styles.chartCard}>
-            <View style={styles.chartHeader}>
-              <Text style={styles.chartTitle}>DAILY TARGET</Text>
-              <View>
-                <Text style={styles.chartSubtitle}>WEEKLY CONSISTENCY</Text>
-                <Text style={styles.chartSubtitleValue}>4/7 DAYS ACHIEVE</Text>
-              </View>
-            </View>
-            <View style={styles.barChartContainer}>
-              {WEEKLY_DATA.map((item, index) => (
-                <View key={index} style={styles.barWrapper}>
-                  <View
-                    style={[
-                      styles.bar,
-                      { height: item.height },
-                      item.active && styles.barActive,
-                    ]}
-                  />
-                  <Text style={styles.barLabel}>{item.day}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          <DailyTargetChart
+            data={USER_DATA.weeklyHistory}
+            unit="Kcal"
+            title="DAILY CALORIES"
+          />
 
           {/* PERSONALIZED PLAN */}
           <View style={styles.planSection}>
