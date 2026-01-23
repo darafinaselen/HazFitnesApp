@@ -21,7 +21,12 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
       console.log(`[API] 🟢 ${config.method?.toUpperCase()} ${config.url}`);
     } else {
-      console.log(`[API REQUEST] 🔴 No Token found for: ${config.url}`);
+      if (
+        !config.url?.includes('auth') &&
+        !config.url?.includes('recommendations')
+      ) {
+        console.log(`[API REQUEST] 🔴 No Token found for: ${config.url}`);
+      }
     }
     return config;
   },
@@ -86,5 +91,4 @@ export const userService = {
     }
   },
 };
-
 export default api;

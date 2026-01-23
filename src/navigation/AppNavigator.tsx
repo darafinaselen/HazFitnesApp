@@ -3,8 +3,9 @@ import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import colors from '../constants/color';
 import CircularProgressBar from '../components/CircularProgressBar';
-import * as SecureStore from 'expo-secure-store';
+import { SessionManager } from '../services/session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 import SplashScreen from '../screens/SplashScreen';
 import GenderSelectScreen from '../screens/dataInput/GenderSelectScreen';
@@ -139,17 +140,17 @@ const AppNavigator: React.FC = () => {
   useEffect(() => {
     const checkUserStatus = async () => {
       try {
-        await SecureStore.deleteItemAsync('user_token');
+        // RESET DATA UNTUK TESTING
+        await SessionManager.clearSession();
         await AsyncStorage.removeItem('has_onboarded');
         console.log('🔥 DATA RESET BERHASIL! SILAKAN LOGIN ULANG.');
 
-        // 1. Cek apakah ada token login?
-        const token = await SecureStore.getItemAsync('user_token');
-
-        // 2. Cek apakah user pernah onboarding (isi data)?
+        // ===== CEK STATUS USER =====
+        const token = await SessionManager.getAccessToken();
+        const userUuid = await SessionManager.getUserUuid();
         const hasOnboarded = await AsyncStorage.getItem('has_onboarded');
 
-        if (token) {
+        if (token && userUuid) {
           // KASUS A: Token ada = Langsung Masuk Home
           console.log('[Auth] Token found, going to Home');
           setInitialRoute('Home');
@@ -165,7 +166,6 @@ const AppNavigator: React.FC = () => {
           }
         }
       } catch (e) {
-        // Fallback jika error, ke Login saja
         setInitialRoute('Login');
       }
     };

@@ -156,9 +156,11 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
       const tokens = regResponse?.data?.tokens || regResponse?.tokens;
       const accessToken = tokens?.accessToken;
       const refreshToken = tokens?.refreshToken;
+      const userUuid =
+        regResponse?.data?.user?.userUuid || regResponse?.user?.userUuid;
 
-      if (accessToken) {
-        await SessionManager.saveSession(accessToken, refreshToken);
+      if (accessToken && userUuid) {
+        await SessionManager.saveSession(accessToken, refreshToken, userUuid);
         console.log('✅ Session Saved via Manager');
 
         await AsyncStorage.setItem('has_onboarded', 'true');

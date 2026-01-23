@@ -132,7 +132,11 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       const refreshToken = tokens?.refreshToken;
 
       if (accessToken) {
-        await SessionManager.saveSession(accessToken, refreshToken);
+        const userUuid = response?.data?.user?.uuid || response?.user?.uuid;
+        if (!userUuid) {
+          throw new Error('User UUID not found in the response.');
+        }
+        await SessionManager.saveSession(accessToken, refreshToken, userUuid);
         console.log('✅ Session Saved via Manager');
 
         await AsyncStorage.setItem('has_onboarded', 'true');
