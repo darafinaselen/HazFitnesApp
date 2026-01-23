@@ -9,6 +9,7 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -16,6 +17,10 @@ import colors from '../constants/color';
 import { FONT_FAMILY } from '../constants/fonts';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+
+import { authService } from '../services/api';
+import { SessionManager } from '../services/session';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const logoImage = require('../assets/images/splash.png');
 
@@ -103,22 +108,60 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setPasswordVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    setLoginError('');
+
     if (!identifier || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    console.log('--- LOGIN ATTEMPT ---');
-    console.log({ identifier, password });
 
-    // Nanti disini logika cek ke Backend/Firebase
-    Alert.alert('Login Success', 'Welcome back!', [
-      {
-        text: 'OK',
-        onPress: () => navigation.replace('Home'),
-      },
-    ]);
+    setIsLoading(true);
+    try {
+      console.log('--- LOGIN ATTEMPT ---');
+      console.log({ identifier });
+
+      const response: any = await authService.login(identifier, password);
+      console.log('Login Response:', response);
+
+      const tokens = response?.data?.tokens || response?.tokens;
+      const accessToken = tokens?.accessToken;
+      const refreshToken = tokens?.refreshToken;
+
+      if (accessToken) {
+        await SessionManager.saveSession(accessToken, refreshToken);
+        console.log('✅ Session Saved via Manager');
+
+        await AsyncStorage.setItem('has_onboarded', 'true');
+
+        Alert.alert('Login Success', 'Welcome back!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.replace('Home'),
+          },
+        ]);
+      } else {
+        Alert.alert('Login Failed', 'No access token received.');
+      }
+    } catch (error: any) {
+      console.error('Login Error:', error);
+      let msg = 'Invalid username or password';
+
+      if (error.response?.data?.message) {
+        const backendMessage = error.response.data.message;
+        if (Array.isArray(backendMessage)) {
+          msg = backendMessage[0].message;
+        } else if (typeof backendMessage === 'string') {
+          msg = backendMessage;
+        }
+      }
+      setLoginError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -126,7 +169,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Reset password feature coming soon!');
+    navigation.navigate('ForgotPassword');
   };
 
   return (
@@ -155,7 +198,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </View>
 
           {/* Password Input */}
-          <View style={styles.inputWrapper}>
+          <View
+            style={[styles.inputWrapper, loginError ? styles.inputError : null]}
+          >
             <View style={styles.iconLeft}>
               <LockIcon />
             </View>
@@ -165,7 +210,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               placeholderTextColor="#79747E"
               secureTextEntry={!isPasswordVisible}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={text => {
+                setPassword(text);
+                if (loginError) setLoginError('');
+              }}
             />
             <TouchableOpacity
               style={styles.iconRight}
@@ -174,6 +222,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <EyeIcon isHidden={!isPasswordVisible} />
             </TouchableOpacity>
           </View>
+          {loginError ? (
+            <Text style={styles.errorText}>{loginError}</Text>
+          ) : null}
 
           {/* Forgot Password Link */}
           <TouchableOpacity
@@ -269,6 +320,19 @@ const styles = StyleSheet.create({
     color: '#1D1B20',
     fontFamily: FONT_FAMILY.PoppinsMedium,
     fontSize: 14,
+  },
+  inputError: {
+    borderColor: '#FF0000',
+    borderWidth: 1,
+    backgroundColor: '#FFF0F0',
+  },
+  errorText: {
+    color: '#FF0000',
+    fontSize: 12,
+    fontFamily: FONT_FAMILY.PoppinsRegular,
+    marginTop: 4,
+    marginLeft: 4,
+    marginBottom: 10,
   },
 
   // --- Forgot Password ---

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   StatusBar,
   Animated,
-  Easing,
   Dimensions,
   Alert,
 } from 'react-native';
@@ -15,9 +14,8 @@ import colors from '../../constants/color';
 import { FONT_FAMILY, FONT_SIZE } from '../../constants/fonts';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
-import color from '../../constants/color';
+import { recommendationService } from '../../services/api';
 
-// --- Konfigurasi Progress Bar Lingkaran ---
 const CIRCLE_SIZE = 200;
 const STROKE_WIDTH = 15;
 const RADIUS = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
@@ -32,13 +30,13 @@ const LOADING_MESSAGES = [
 ];
 
 type Props = StackScreenProps<RootStackParamList, 'Analyzing'>;
-
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const AnalyzingScreen: React.FC<Props> = ({ navigation, route }) => {
   const [displayProgress, setDisplayProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
-  const finalUserData = route.params;
+
+  const rawData = route.params || {};
   const strokeDashoffset =
     CIRCUMFERENCE - (CIRCUMFERENCE * displayProgress) / 100;
 
@@ -46,31 +44,94 @@ const AnalyzingScreen: React.FC<Props> = ({ navigation, route }) => {
     const interval = setInterval(() => {
       setDisplayProgress(prev => {
         const nextProgress = prev + 1;
-        if (nextProgress % 20 === 0 && nextProgress < 100) {
+
+        if (nextProgress % 20 === 0 && nextProgress < 90) {
           setMessageIndex(current => (current + 1) % LOADING_MESSAGES.length);
         }
 
-        if (nextProgress >= 100) {
-          clearInterval(interval);
-
-          setTimeout(() => {
-            console.log('--- ANALISIS SELESAI. DATA FINAL: ---', finalUserData);
-
-            Alert.alert('Analisis Selesai!', 'Siap masuk ke Register.', [
-              {
-                text: 'OK',
-                onPress: () => {
-                  navigation.replace('Register', finalUserData);
-                  console.log('User menekan OK');
-                },
-              },
-            ]);
-          }, 500);
-          return 100;
-        }
-        return nextProgress;
+        return nextProgress >= 90 ? 90 : nextProgress;
       });
     }, 50);
+
+    const performAnalysis = async () => {
+      try {
+        console.log('--- START AI ANALYSIS ---');
+        console.log('Raw Data Input:', rawData);
+
+        // --- MAPPING DATA  ---
+        const sex =
+          rawData.gender && rawData.gender.toLowerCase() === 'female'
+            ? 'Female'
+            : 'Male';
+        const hypertension = rawData.hypertension ? 'Yes' : 'No';
+        const diabetes = rawData.diabetes ? 'Yes' : 'No';
+        let heightVal = Number(rawData.height);
+        //convert cm to m
+        if (heightVal > 3) {
+          heightVal = heightVal / 100;
+        }
+
+        const requestBody = {
+          sex: sex,
+          age: Number(rawData.age),
+          height: heightVal,
+          weight: Number(rawData.weight),
+          hypertension: hypertension,
+          diabetes: diabetes,
+          fitness_goal: rawData.goal,
+          fitness_type: rawData.training,
+        };
+
+        console.log('Sending to AI API:', requestBody);
+        const response = await recommendationService.generate(requestBody);
+        console.log('AI Response Success:', response);
+
+        const recToken = response.data?.recommendation_token;
+
+        clearInterval(interval);
+        setDisplayProgress(100);
+
+        setTimeout(() => {
+          Alert.alert('Analysis Complete', 'Your personalized plan is ready!', [
+            {
+              text: 'Create Account',
+              onPress: () => {
+                navigation.replace('Register', {
+                  recommendationToken: recToken,
+                });
+              },
+            },
+          ]);
+        }, 500);
+      } catch (error: any) {
+        console.error('AI API Error:', error);
+        if (error.response?.data) {
+          console.log(
+            'Backend Error Details:',
+            JSON.stringify(error.response.data, null, 2),
+          );
+        }
+
+        clearInterval(interval);
+        setDisplayProgress(100);
+
+        Alert.alert(
+          'Notice',
+          'AI Analysis connection failed, but you can still register.',
+          [
+            {
+              text: 'Continue',
+              onPress: () =>
+                navigation.replace('Register', {
+                  recommendationToken: undefined,
+                }),
+            },
+          ],
+        );
+      }
+    };
+
+    performAnalysis();
 
     return () => clearInterval(interval);
   }, []);
@@ -84,7 +145,6 @@ const AnalyzingScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.progressContainer}>
           <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
             <G rotation="-90" origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`}>
-              {/* Lingkaran Belakang (Abu-abu) */}
               <Circle
                 cx={CIRCLE_SIZE / 2}
                 cy={CIRCLE_SIZE / 2}
@@ -176,7 +236,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontFamily: FONT_FAMILY.PoppinsMedium,
     fontSize: FONT_SIZE.md,
-    color: color.text,
+    color: colors.text,
     textAlign: 'center',
   },
 });

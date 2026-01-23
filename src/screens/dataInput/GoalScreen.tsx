@@ -14,12 +14,11 @@ import { FONT_FAMILY, FONT_SIZE } from '../../constants/fonts';
 import PrimaryButton from '../../components/PrimaryButton';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
-
-const imgGain = require('../../assets/images/female.png');
-const imgLoss = require('../../assets/images/female.png');
-const imgMaintain = require('../../assets/images/female.png');
+import { onboardingImages } from '../../constants/onboardingImages';
 
 type Props = StackScreenProps<RootStackParamList, 'Goal'>;
+
+type BackendGoal = 'Weight Gain' | 'Weight Loss';
 
 const GoalCard = ({
   label,
@@ -52,8 +51,12 @@ const GoalCard = ({
 };
 
 const Goalcreen: React.FC<Props> = ({ navigation, route }) => {
-  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<BackendGoal | null>(null);
   const previousData = route.params;
+  const { gender } = previousData;
+
+  const gainImage = onboardingImages.goal.gain[gender];
+  const lossImage = onboardingImages.goal.loss[gender];
 
   const handleContinue = () => {
     const currentData = {
@@ -77,7 +80,7 @@ const Goalcreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Card 1: Weight Gain */}
             <GoalCard
               label="Weight Gain"
-              image={imgGain}
+              image={gainImage}
               isSelected={selectedGoal === 'Weight Gain'}
               onPress={() => setSelectedGoal('Weight Gain')}
             />
@@ -85,18 +88,18 @@ const Goalcreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Card 2: Weight Loss */}
             <GoalCard
               label="Weight Loss"
-              image={imgLoss}
+              image={lossImage}
               isSelected={selectedGoal === 'Weight Loss'}
               onPress={() => setSelectedGoal('Weight Loss')}
             />
 
             {/* Card 3: Maintain Weight */}
-            <GoalCard
+            {/* <GoalCard
               label="Maintain Weight"
               image={imgMaintain}
               isSelected={selectedGoal === 'Maintain Weight'}
               onPress={() => setSelectedGoal('Maintain Weight')}
-            />
+            /> */}
           </View>
         </View>
 
@@ -166,11 +169,12 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
 
   // Bagian Teks (Separuh Kanan)
   textContainer: {
-    flex: 1, // Sisa ruang (60%)
+    flex: 1,
     justifyContent: 'center',
     paddingLeft: 20,
   },

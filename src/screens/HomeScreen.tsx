@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   Image,
   StatusBar,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -24,39 +26,121 @@ import {
 } from '../components/ReportIcons';
 import { SmallStatCard, MediumStatCard } from '../components/StatCards';
 import DailyTargetChart, { DailyData } from '../components/DailyTargetChart';
+import { userService } from '../services/api';
 
 const userProfileImg = require('../assets/images/splash.png');
 const squatBannerImg = require('../assets/images/splash.png');
 
 // --- DUMMY DATA ---
-const USER_DATA = {
+// const USER_DATA = {
+//   user: {
+//     name: 'MEECHEL BERNANDO',
+//     minutes: 45, // Total menit workout hari ini
+//     calories: 3115, // Total kalori hari ini
+//     workoutCount: 20, // Total workout yang sudah selesai
+//   },
+//   steps: {
+//     current: 2500, // Langkah hari ini
+//     target: 5000, // Target langkah harian
+//   },
+//   streak: {
+//     days: 4, // Streak aktif saat ini (4 hari)
+//   },
+//   // Data Chart: Value (Total Kalori Harian) vs Target (dari AI)
+//   weeklyHistory: [
+//     { day: 'SUN', value: 1200, target: 2000 }, // value dalam Kcal
+//     { day: 'MON', value: 2100, target: 2000 },
+//     { day: 'TUE', value: 2500, target: 2200 }, // Target naik
+//     { day: 'WED', value: 1000, target: 2200 }, // Masih dikit
+//     { day: 'THU', value: 1800, target: 2200 },
+//     { day: 'FRI', value: 2300, target: 2200 },
+//     { day: 'SAT', value: 500, target: 2200 },
+//   ] as DailyData[],
+// };
+
+interface DashboardData {
   user: {
-    name: 'MEECHEL BERNANDO',
-    minutes: 45, // Total menit workout hari ini
-    calories: 3115, // Total kalori hari ini
-    workoutCount: 20, // Total workout yang sudah selesai
-  },
-  steps: {
-    current: 2500, // Langkah hari ini
-    target: 5000, // Target langkah harian
-  },
-  streak: {
-    days: 4, // Streak aktif saat ini (4 hari)
-  },
-  // Data Chart: Value (Total Kalori Harian) vs Target (dari AI)
-  weeklyHistory: [
-    { day: 'SUN', value: 1200, target: 2000 }, // value dalam Kcal
-    { day: 'MON', value: 2100, target: 2000 },
-    { day: 'TUE', value: 2500, target: 2200 }, // Target naik
-    { day: 'WED', value: 1000, target: 2200 }, // Masih dikit
-    { day: 'THU', value: 1800, target: 2200 },
-    { day: 'FRI', value: 2300, target: 2200 },
-    { day: 'SAT', value: 500, target: 2200 },
-  ] as DailyData[],
-};
+    firstName: string;
+    avatar: string | null;
+  };
+  dailyStats: {
+    totalMinutes: number;
+    caloriesBurned: number;
+    workoutsCompleted: number;
+    steps: {
+      current: number;
+      target: number;
+      percentage: number;
+    };
+    streak: number;
+  };
+  weeklyProgress: {
+    chartData: {
+      day: string;
+      value: number;
+      isToday: boolean;
+    }[];
+    consistency: string;
+  };
+  activePlan: {
+    id: number;
+    title: string;
+    progress: string;
+    nextSessionDuration: number;
+  } | null;
+}
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await userService.getDashboard();
+      if (response && response.data) {
+        setData(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load dashboard:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchDashboardData();
+  }, []);
+
+  // --- LOADING VIEW ---
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.mainContainer,
+          { justifyContent: 'center', alignItems: 'center' },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#1697D4" />
+      </View>
+    );
+  }
+
+  // FORMAT CHARTDATA
+  const formattedChartData: DailyData[] =
+    data?.weeklyProgress?.chartData?.map(item => ({
+      day: item.day.toUpperCase(),
+      value: item.value,
+      target: 600,
+    })) || [];
 
   return (
     <View style={styles.mainContainer}>
@@ -66,13 +150,23 @@ const HomeScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           {/* HEADER */}
           <View style={styles.header}>
-            <Image source={userProfileImg} style={styles.profileImage} />
+            <Image
+              source={
+                data?.user?.avatar ? { uri: data.user.avatar } : userProfileImg
+              }
+              style={styles.profileImage}
+            />
             <View style={styles.headerTextContainer}>
               <Text style={styles.welcomeText}>WELLCOME BACK,</Text>
-              <Text style={styles.userName}>{USER_DATA.user.name}</Text>
+              <Text style={styles.userName}>
+                {data?.user?.firstName?.toUpperCase() || 'GUEST'}
+              </Text>
             </View>
           </View>
 
@@ -80,17 +174,17 @@ const HomeScreen: React.FC = () => {
           <View style={styles.statsRow}>
             <SmallStatCard
               Icon={ClockIcon}
-              value={`${USER_DATA.user.minutes}`}
+              value={`${data?.dailyStats?.totalMinutes || 0}`}
               label="MINUTES"
             />
             <SmallStatCard
               Icon={FireIconCal}
-              value={`${USER_DATA.user.calories} KCAL`}
+              value={`${data?.dailyStats?.caloriesBurned || 0} KCAL`}
               label="CAL BURN"
             />
             <SmallStatCard
               Icon={RunIcon}
-              value={`${USER_DATA.user.workoutCount}`}
+              value={`${data?.dailyStats?.workoutsCompleted || 0}`}
               label="WORKOUT"
             />
           </View>
@@ -100,10 +194,12 @@ const HomeScreen: React.FC = () => {
             <MediumStatCard
               Icon={FootIcon}
               label="STEPS"
-              subLabel={`${USER_DATA.steps.current}/${USER_DATA.steps.target} M`}
+              subLabel={`${data?.dailyStats?.steps?.current || 0}/${
+                data?.dailyStats?.steps?.target || 5000
+              } M`}
               type="steps"
-              currentSteps={USER_DATA.steps.current}
-              targetSteps={USER_DATA.steps.target}
+              currentSteps={data?.dailyStats?.steps?.current || 0}
+              targetSteps={data?.dailyStats?.steps?.target || 5000}
               onPress={() => navigation.navigate('StepsTracker')}
             />
 
@@ -111,15 +207,15 @@ const HomeScreen: React.FC = () => {
             <MediumStatCard
               Icon={FireIconStreak}
               label="STREAK"
-              subLabel={`${USER_DATA.streak.days} DAYS`}
+              subLabel={`${data?.dailyStats?.streak || 0} DAYS`}
               type="streak"
-              streakDays={USER_DATA.streak.days}
+              streakDays={data?.dailyStats?.streak || 0}
             />
           </View>
 
           {/* DAILY TARGET CHART */}
           <DailyTargetChart
-            data={USER_DATA.weeklyHistory}
+            data={formattedChartData}
             unit="Kcal"
             title="DAILY CALORIES"
           />
@@ -131,25 +227,54 @@ const HomeScreen: React.FC = () => {
               <TouchableOpacity
                 onPress={() =>
                   navigation.navigate('Program', {
-                    programId: 'beginner',
-                    programTitle: 'BEGINNER',
+                    programId: data?.activePlan
+                      ? String(data.activePlan.id)
+                      : 'beginner',
+                    programTitle: data?.activePlan?.title || 'BEGINNER',
                   })
                 }
               >
                 <Text style={styles.viewAll}>VIEW ALL</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.planCard}>
-              <Image
-                source={squatBannerImg}
-                style={styles.planBgImage}
-                resizeMode="cover"
-              />
-              <View style={styles.planOverlay}>
-                <Text style={styles.planName}>BODYWEIGTH{'\n'}SQUAT</Text>
-                <Text style={styles.planDuration}>5-8 MIN</Text>
+            {data?.activePlan ? (
+              // JIKA ADA PLAN AKTIF -> Tampilkan Data API
+              <View style={styles.planCard}>
+                <Image
+                  source={squatBannerImg}
+                  style={styles.planBgImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.planOverlay}>
+                  <Text style={styles.planName}>
+                    {data.activePlan.title.toUpperCase()}
+                  </Text>
+                  <Text style={styles.planDuration}>
+                    {data.activePlan.progress}
+                  </Text>
+                </View>
               </View>
-            </View>
+            ) : (
+              <View
+                style={[
+                  styles.planCard,
+                  {
+                    backgroundColor: '#DDD',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontFamily: FONT_FAMILY.MontserratMedium,
+                    color: '#555',
+                  }}
+                >
+                  No active plan currently
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Spacer untuk Bottom Bar */}

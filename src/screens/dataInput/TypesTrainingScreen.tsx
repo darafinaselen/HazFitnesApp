@@ -14,14 +14,10 @@ import { FONT_FAMILY, FONT_SIZE } from '../../constants/fonts';
 import PrimaryButton from '../../components/PrimaryButton';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
-
-// Import Gambar (Sesuaikan nama file kamu)
-// Jika belum ada gambar, bisa dikomentari dulu dan ganti require dummy
-const imgGain = require('../../assets/images/female.png');
-const imgLoss = require('../../assets/images/female.png');
-const imgMaintain = require('../../assets/images/female.png');
+import { onboardingImages } from '../../constants/onboardingImages';
 
 type Props = StackScreenProps<RootStackParamList, 'TypesTraining'>;
+type BackendTraining = 'Cardio Fitness' | 'Muscular Fitness';
 
 const TrainingCard = ({
   label,
@@ -54,8 +50,13 @@ const TrainingCard = ({
 };
 
 const TypesTrainingScreen: React.FC<Props> = ({ navigation, route }) => {
-  const [selectedTraining, setSelectedTraining] = useState<string | null>(null);
+  const [selectedTraining, setSelectedTraining] =
+    useState<BackendTraining | null>(null);
   const previousData = route.params;
+  const { gender } = previousData;
+
+  const muscularImage = onboardingImages.goal.gain[gender];
+  const cardioImage = onboardingImages.goal.loss[gender];
 
   const handleContinue = () => {
     const finalData = {
@@ -81,7 +82,7 @@ const TypesTrainingScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Card 1: Muscular Fitness */}
             <TrainingCard
               label="Muscular Fitness"
-              image={imgGain}
+              image={muscularImage}
               isSelected={selectedTraining === 'Muscular Fitness'}
               onPress={() => setSelectedTraining('Muscular Fitness')}
             />
@@ -89,18 +90,18 @@ const TypesTrainingScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Card 2: Cardio */}
             <TrainingCard
               label="Cardio"
-              image={imgLoss}
-              isSelected={selectedTraining === 'Cardio'}
-              onPress={() => setSelectedTraining('Cardio')}
+              image={cardioImage}
+              isSelected={selectedTraining === 'Cardio Fitness'}
+              onPress={() => setSelectedTraining('Cardio Fitness')}
             />
 
             {/* Card 3: Flexibility */}
-            <TrainingCard
+            {/* <TrainingCard
               label="Flexibility"
               image={imgMaintain}
               isSelected={selectedTraining === 'Flexibility'}
               onPress={() => setSelectedTraining('Flexibility')}
-            />
+            /> */}
           </View>
         </View>
 

@@ -9,6 +9,7 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, G } from 'react-native-svg';
@@ -16,6 +17,10 @@ import colors from '../constants/color';
 import { FONT_FAMILY } from '../constants/fonts';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+
+import { authService } from '../services/api';
+import { SessionManager } from '../services/session';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const logoImage = require('../assets/images/splash.png');
 
@@ -116,35 +121,75 @@ const GoogleIcon = () => (
 );
 
 const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
-  const userData = route.params;
-
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setPasswordVisible] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = () => {
+  const recommendationToken = route.params?.recommendationToken;
+
+  const handleRegister = async () => {
+    setRegisterError('');
     if (!username || !email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    console.log('--- REGISTERING USER ---');
-    console.log('User Input:', { username, email, password });
-    console.log('Body Data (BMI etc):', userData);
+    if (password.length < 8) {
+      setRegisterError('Password must be at least 8 characters');
+      return;
+    }
 
-    Alert.alert('Success', 'Account Created Successfully!', [
-      {
-        text: 'OK',
-        onPress: () => {
-          navigation.navigate('Login');
-        },
-      },
-    ]);
+    setIsLoading(true);
+    try {
+      console.log('--- REGISTER START ---');
+      const regResponse: any = await authService.register(
+        username,
+        email,
+        password,
+        recommendationToken,
+      );
+      console.log('Register Success:', regResponse);
+
+      const tokens = regResponse?.data?.tokens || regResponse?.tokens;
+      const accessToken = tokens?.accessToken;
+      const refreshToken = tokens?.refreshToken;
+
+      if (accessToken) {
+        await SessionManager.saveSession(accessToken, refreshToken);
+        console.log('✅ Session Saved via Manager');
+
+        await AsyncStorage.setItem('has_onboarded', 'true');
+
+        Alert.alert('Success', 'Account Created! Welcome to HazFit.', [
+          { text: "Let's Start", onPress: () => navigation.replace('Home') },
+        ]);
+      } else {
+        Alert.alert('Success', 'Account created. Please Login manually.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
+      }
+    } catch (error: any) {
+      console.error('Register Error:', error);
+      let msg = 'Registration failed. Please try again.';
+      if (error.response?.data) {
+        const backendMessage = error.response.data.message;
+        if (Array.isArray(backendMessage)) {
+          msg = backendMessage[0].message;
+        } else if (typeof backendMessage === 'string') {
+          msg = backendMessage;
+        }
+      }
+      setRegisterError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleRegister = () => {
-    Alert.alert('Google Sign-In', 'This feature is coming soon!');
+    Alert.alert('Info', 'Coming Soon');
   };
 
   return (
@@ -189,7 +234,12 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           {/* Password Input */}
-          <View style={styles.inputWrapper}>
+          <View
+            style={[
+              styles.inputWrapper,
+              registerError ? styles.inputError : null,
+            ]}
+          >
             <View style={styles.iconLeft}>
               <LockIcon />
             </View>
@@ -199,7 +249,10 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
               placeholderTextColor="#79747E"
               secureTextEntry={!isPasswordVisible}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={text => {
+                setPassword(text);
+                setRegisterError('');
+              }}
             />
             <TouchableOpacity
               style={styles.iconRight}
@@ -208,6 +261,9 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
               <EyeIcon isHidden={!isPasswordVisible} />
             </TouchableOpacity>
           </View>
+          {registerError ? (
+            <Text style={styles.errorText}>{registerError}</Text>
+          ) : null}
         </View>
 
         {/* BUTTONS */}
@@ -297,6 +353,19 @@ const styles = StyleSheet.create({
     color: '#1D1B20',
     fontFamily: FONT_FAMILY.PoppinsMedium,
     fontSize: 14,
+  },
+
+  inputError: {
+    borderColor: '#FF0000',
+    borderWidth: 1,
+    backgroundColor: '#FFF0F0',
+  },
+  errorText: {
+    color: '#FF0000',
+    fontSize: 12,
+    fontFamily: FONT_FAMILY.PoppinsRegular,
+    marginTop: 4,
+    marginLeft: 4,
   },
 
   // --- BUTTONS ---

@@ -31,7 +31,9 @@ const ChooseCard: React.FC<Props> = ({
         (isSelected || pressed) && styles.cardActive,
       ]}
     >
-      <Image source={imageSource} style={styles.image} />
+      <View style={styles.imageContainer}>
+        <Image source={imageSource} style={styles.image} resizeMode="cover" />
+      </View>
 
       <View style={styles.textContainer}>
         <Text style={styles.text}>{label}</Text>
@@ -45,6 +47,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '90%',
+    height: 120,
     borderRadius: 15,
     backgroundColor: colors.blue100,
     elevation: 8,
@@ -52,17 +55,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
   },
   cardActive: {
     borderWidth: 3,
     borderColor: colors.blue700,
   },
-  image: {
-    width: 150,
-    height: 150,
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
+  imageContainer: {
+    width: 120,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  // image: {
+  //   width: 150,
+  //   height: 150,
+  //   borderTopLeftRadius: 12,
+  //   borderBottomLeftRadius: 12,
+  // },
   textContainer: {
     flex: 1,
     alignItems: 'center',

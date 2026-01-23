@@ -1,8 +1,11 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import colors from '../constants/color';
 import CircularProgressBar from '../components/CircularProgressBar';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import SplashScreen from '../screens/SplashScreen';
 import GenderSelectScreen from '../screens/dataInput/GenderSelectScreen';
 import AgeScreen from '../screens/dataInput/AgeScreen';
@@ -29,6 +32,9 @@ import ProfileScreen from '../screens/ProfileScreen';
 import StatisticsScreen from '../screens/StatisticsScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
 import RemindersScreen from '../screens/RemindersScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import VerificationCodeScreen from '../screens/auth/VerificationCodeScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -63,7 +69,7 @@ export type RootStackParamList = {
     bmiLevel: BmiLevel;
     hypertension: boolean | null;
     diabetes: boolean | null;
-    goal: string | null;
+    goal: 'Weight Gain' | 'Weight Loss' | null;
   };
   Analyzing: {
     gender: 'male' | 'female';
@@ -74,22 +80,16 @@ export type RootStackParamList = {
     bmiLevel: BmiLevel;
     hypertension: boolean | null;
     diabetes: boolean | null;
-    goal: string | null;
-    training: string | null;
+    goal: 'Weight Gain' | 'Weight Loss' | null;
+    training: 'Cardio Fitness' | 'Muscular Fitness' | null;
   };
   Register: {
-    gender: 'male' | 'female';
-    age: number;
-    height: number;
-    weight: number;
-    bmi: number;
-    bmiLevel: BmiLevel;
-    hypertension: boolean | null;
-    diabetes: boolean | null;
-    goal: string | null;
-    training: string | null;
+    recommendationToken?: string;
   };
   Login: undefined;
+  ForgotPassword: undefined;
+  VerificationCode: { email: string };
+  ResetPassword: undefined;
   Home: undefined;
   Program: {
     programId: string;
@@ -132,8 +132,67 @@ const headerStyleOptions = {
 };
 
 const AppNavigator: React.FC = () => {
+  const [initialRoute, setInitialRoute] = useState<
+    keyof RootStackParamList | null
+  >(null);
+
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        await SecureStore.deleteItemAsync('user_token');
+        await AsyncStorage.removeItem('has_onboarded');
+        console.log('🔥 DATA RESET BERHASIL! SILAKAN LOGIN ULANG.');
+
+        // 1. Cek apakah ada token login?
+        const token = await SecureStore.getItemAsync('user_token');
+
+        // 2. Cek apakah user pernah onboarding (isi data)?
+        const hasOnboarded = await AsyncStorage.getItem('has_onboarded');
+
+        if (token) {
+          // KASUS A: Token ada = Langsung Masuk Home
+          console.log('[Auth] Token found, going to Home');
+          setInitialRoute('Home');
+        } else {
+          if (hasOnboarded === 'true') {
+            // KASUS B: Token gak ada, TAPI pernah input data = User Logout -> Ke Login
+            console.log('[Auth] No token but onboarded, going to Login');
+            setInitialRoute('Login');
+          } else {
+            // KASUS C: User Baru -> Ke Input Data Pertama
+            console.log('[Auth] New user, going to GenderSelect');
+            setInitialRoute('GenderSelect');
+          }
+        }
+      } catch (e) {
+        // Fallback jika error, ke Login saja
+        setInitialRoute('Login');
+      }
+    };
+
+    checkUserStatus();
+  }, []);
+
+  if (initialRoute === null) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.white,
+        }}
+      >
+        <ActivityIndicator size="large" color="#009CDE" />
+      </View>
+    );
+  }
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName={initialRoute}
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen
         name="Splash"
         component={SplashScreen}
@@ -243,6 +302,21 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen
         name="Login"
         component={LoginScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VerificationCode"
+        component={VerificationCodeScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ResetPassword"
+        component={ResetPasswordScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
