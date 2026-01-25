@@ -19,11 +19,13 @@ import color from '../constants/color';
 // import Video from 'react-native-video';
 import { Video, ResizeMode } from 'expo-av';
 import QuitWorkoutModal from '../components/player/QuitWorkoutModal';
+import { workoutService } from '../services/api';
 
 const WorkoutPlayerScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'WorkoutPlayer'>>();
-  const { playlist, onProgressUpdate, initialIndex } = route.params;
+  // @ts-ignore - sessionId added to navigation params
+  const { playlist, onProgressUpdate, initialIndex, sessionId } = route.params;
 
   // --- STATE ---
   const [currentIndex, setCurrentIndex] = useState(initialIndex || 0);
@@ -31,6 +33,7 @@ const WorkoutPlayerScreen = () => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [startTime] = useState(Date.now()); // Track start time for total duration
 
   const [countdown, setCountdown] = useState(5);
   const [progress, setProgress] = useState(0);
@@ -53,13 +56,23 @@ const WorkoutPlayerScreen = () => {
     return () => backHandler.remove();
   }, [handleBackPress]);
 
-  const handleQuit = (reason: string) => {
+  const handleQuit = async (reason: string) => {
     console.log('Quit reason:', reason);
     setModalVisible(false);
     const percentage = Math.round((currentIndex / playlist.length) * 100);
 
     if (onProgressUpdate) {
       onProgressUpdate(percentage);
+    }
+
+    // Call API to quit session
+    if (sessionId) {
+      try {
+        const duration = Math.floor((Date.now() - startTime) / 1000);
+        await workoutService.quitSession(sessionId, duration);
+      } catch (e) {
+        console.log('Failed to sync quit', e);
+      }
     }
 
     navigation.goBack();
@@ -99,7 +112,7 @@ const WorkoutPlayerScreen = () => {
   }, [isPlaying, isGetReady, currentExercise, isModalVisible]);
 
   // --- HANDLERS ---
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setIsGetReady(true);
@@ -108,6 +121,20 @@ const WorkoutPlayerScreen = () => {
     } else {
       setIsPlaying(false);
       if (onProgressUpdate) onProgressUpdate(0);
+
+      // Call API to complete session
+      if (sessionId) {
+        try {
+          const duration = Math.floor((Date.now() - startTime) / 1000);
+          // Calculate rough calories (e.g., 0.1 kcal/sec/kg? or just rough estimate 5-10 kcal/min)
+          // backend might recalc, but we send what we have
+          const calories = Math.floor(duration * 0.15);
+          await workoutService.completeSession(sessionId, duration, calories);
+        } catch (e) {
+          console.log('Failed to sync completion', e);
+        }
+      }
+
       Alert.alert('WORKOUT COMPLETE!', 'Congratulations!', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);

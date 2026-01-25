@@ -91,4 +91,48 @@ export const userService = {
     }
   },
 };
+
+export const programService = {
+  getAllPrograms: async () => {
+    const response = await api.get('/api/v1/programs');
+    return response.data;
+  },
+
+  getProgramSchedule: async (programId: number | string) => {
+    // Usually backend expects numeric ID, but frontend might pass 'beginner' string initially.
+    // Assuming backend handles mapped strings or we purely use IDs.
+    // Based on frontend code, it passes 'beginner', 'intermediet'. 
+    // Backend likely handles this or we need to align.
+    // Let's assume the endpoint handles it or returns correct ID in list first.
+    const response = await api.get(`/api/v1/programs/${programId}/schedule`);
+    return response.data;
+  },
+};
+
+export const workoutService = {
+  startSession: async (programId: number, dayNumber: number) => {
+    const response = await api.post('/api/v1/workouts/start', {
+      programId,
+      dayNumber,
+    });
+    return response.data;
+  },
+
+  completeSession: async (sessionId: string, duration: number, calories: number) => {
+    const response = await api.post(`/api/v1/workouts/${sessionId}/complete`, {
+      totalDuration: duration,
+      caloriesBurned: calories,
+    });
+    return response.data;
+  },
+
+  quitSession: async (sessionId: string, duration: number) => {
+    const response = await api.post(`/api/v1/workouts/${sessionId}/quit`, {
+      duration,
+      reason: 'USER_QUIT',
+    });
+    return response.data;
+  }
+};
+
 export default api;

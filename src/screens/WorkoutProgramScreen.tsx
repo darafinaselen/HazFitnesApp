@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -8,40 +15,19 @@ import CustomBottomBar from '../components/CustomBottomBar';
 import ProgramSelectionCard from '../components/ProgramSelectionCard';
 import { FONT_FAMILY, FONT_SIZE } from '../constants/fonts';
 import Svg, { Path } from 'react-native-svg';
+import { programService } from '../services/api';
 
 // --- Placeholder Image ---
 const programThumb = require('../assets/images/splash.png');
 
-const PROGRAMS = [
-  {
-    id: 'beginner',
-    title: 'BEGINNER',
-    description:
-      'Begin your fitness journey with simple, foundational exercises. The perfect way to build healthy habits from day one.',
-    image: programThumb,
-  },
-  {
-    id: 'intermediet',
-    title: 'INTERMEDIET',
-    description:
-      'Take your fitness to the next level with increased intensity and complexity. Perfect for those ready to challenge themselves.',
-    image: programThumb,
-  },
-  {
-    id: 'advanced',
-    title: 'ADVANCED',
-    description:
-      'Push your limits with high-intensity workouts designed for experienced athletes. Maximum effort for maximum results.',
-    image: programThumb,
-  },
-  {
-    id: 'myprogram',
-    title: 'MY PROGRAM',
-    description:
-      'Customized routine tailored specifically to your personal goals and preferences.',
-    image: programThumb,
-  },
-];
+interface ProgramData {
+  id: string | number;
+  title: string;
+  name?: string; // Backend might use name
+  description: string;
+  image?: any;
+  isLocked?: boolean;
+}
 
 const BackArrowIcon = () => (
   <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -54,9 +40,39 @@ const BackArrowIcon = () => (
 
 const WorkoutProgramsScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const [selectedId, setSelectedId] = useState('beginner');
+  const [selectedId, setSelectedId] = useState<string | number>('beginner');
+  const [programs, setPrograms] = useState<ProgramData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSelectProgram = (program: (typeof PROGRAMS)[0]) => {
+  useEffect(() => {
+    fetchPrograms();
+  }, []);
+
+  const fetchPrograms = async () => {
+    try {
+      const response = await programService.getAllPrograms();
+      // Assuming response.data is the array or response itself is the array
+      // Check structure from other responses. getUserDashboard was response.data.
+      // Adjust if needed.
+      if (response && response.data) {
+        // Map backend fields if necessary
+        const formatted = response.data.map((p: any) => ({
+          id: p.id,
+          title: p.name || p.title,
+          description: p.description,
+          image: programThumb, // Fallback for now if backend doesn't send image
+          isLocked: false,
+        }));
+        setPrograms(formatted);
+      }
+    } catch (error) {
+      console.error('Failed to fetch programs', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectProgram = (program: ProgramData) => {
     setSelectedId(program.id);
 
     navigation.navigate('Program', {
@@ -74,23 +90,31 @@ const WorkoutProgramsScreen: React.FC = () => {
           <Text style={styles.pageTitle}>WORKOUT PROGRAMS</Text>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {PROGRAMS.map(program => (
-            <ProgramSelectionCard
-              key={program.id}
-              title={program.title}
-              description={program.description}
-              image={program.image}
-              isSelected={selectedId === program.id}
-              onPress={() => handleSelectProgram(program)}
-            />
-          ))}
+        {loading ? (
+          <View
+            style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+          >
+            <ActivityIndicator size="large" color="#1697D4" />
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {programs.map(program => (
+              <ProgramSelectionCard
+                key={program.id}
+                title={program.title}
+                description={program.description}
+                image={program.image}
+                isSelected={selectedId === program.id}
+                onPress={() => handleSelectProgram(program)}
+              />
+            ))}
 
-          <View style={{ height: 100 }} />
-        </ScrollView>
+            <View style={{ height: 100 }} />
+          </ScrollView>
+        )}
       </SafeAreaView>
 
       <CustomBottomBar />

@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  StatusBar,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '../../constants/color';
 import { FONT_FAMILY, FONT_SIZE } from '../../constants/fonts';
@@ -54,6 +60,16 @@ const GenderSelectScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => handleGenderSelect('male')}
           />
         </View>
+
+        <TouchableOpacity
+          style={styles.loginContainer}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={styles.loginText}>
+            Already have an account?{' '}
+            <Text style={styles.loginHighlight}>Login</Text>
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -86,6 +102,20 @@ const styles = StyleSheet.create({
   cardContainer: {
     alignItems: 'center',
     gap: 30,
+  },
+  loginContainer: {
+    marginTop: 50,
+    alignItems: 'center',
+    padding: 10,
+  },
+  loginText: {
+    fontSize: 14,
+    color: '#1D1B20',
+    fontFamily: FONT_FAMILY.PoppinsRegular,
+  },
+  loginHighlight: {
+    color: colors.primary,
+    fontFamily: FONT_FAMILY.PoppinsSemiBold,
   },
 });
 

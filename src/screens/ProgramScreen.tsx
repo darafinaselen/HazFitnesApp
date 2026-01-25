@@ -10,6 +10,7 @@ import {
   Platform,
   UIManager,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,8 +27,9 @@ import ProgramSection from '../components/program/ProgramSection';
 import DayDropdown from '../components/program/DayDropdown';
 
 // Data & Types
-import { getProgramDataByLevel } from '../data/programData';
+// import { getProgramDataByLevel } from '../data/programData'; // REMOVED LOCAL DATA
 import { ProgramDay } from '../types/programTypes';
+import { programService, workoutService } from '../services/api';
 
 // Enable LayoutAnimation for Android
 if (
@@ -45,9 +47,9 @@ const ProgramScreen: React.FC = () => {
   const programTitle = route.params?.programTitle || 'BEGINNER';
 
   // State
-  const [programData, setProgramData] = useState<ProgramDay[]>(
-    getProgramDataByLevel(programId),
-  );
+  // Initial state as empty array, wait for fetch
+  const [programData, setProgramData] = useState<ProgramDay[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
 
@@ -59,9 +61,53 @@ const ProgramScreen: React.FC = () => {
   const [workoutProgress, setWorkoutProgress] = useState(0);
 
   useEffect(() => {
-    setProgramData(getProgramDataByLevel(programId));
-    setSelectedDayIndex(0);
+    fetchProgramSchedule();
   }, [programId]);
+
+  const fetchProgramSchedule = async () => {
+    setLoading(true);
+    try {
+      const response = await programService.getProgramSchedule(programId);
+      // Assuming response.data is ProgramDay[] or has to be mapped
+      // Backend should be returning structure compatible with UI.
+      if (response && response.data) {
+        setProgramData(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch schedule', error);
+      Alert.alert('Error', 'Failed to load program schedule');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle loading state before accessing currentProgram
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.mainContainer,
+          { justifyContent: 'center', alignItems: 'center' },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#1697D4" />
+      </View>
+    );
+  }
+
+  // Handle case where data is empty
+  if (!programData || programData.length === 0) {
+    return (
+      <View
+        style={[
+          styles.mainContainer,
+          { justifyContent: 'center', alignItems: 'center' },
+        ]}
+      >
+        <Text>No schedule found for this program.</Text>
+      </View>
+    );
+  }
 
   const currentProgram = programData[selectedDayIndex];
 
@@ -90,7 +136,7 @@ const ProgramScreen: React.FC = () => {
     );
   };
 
-  const handleStartWorkout = () => {
+  const handleStartWorkout = async () => {
     let playlist: any[] = [];
 
     if (isWarmUpActive)
@@ -123,17 +169,48 @@ const ProgramScreen: React.FC = () => {
       return;
     }
 
-    let startIndex = 0;
-    if (workoutProgress > 0 && workoutProgress < 100) {
-      startIndex = Math.floor((workoutProgress / 100) * playlist.length);
-      if (startIndex >= playlist.length) startIndex = playlist.length - 1;
-    }
+    try {
+      // Start session in backend
+      // We need dayNumber (e.g., currentProgram.day or derived from index + 1)
+      // Using selectedDayIndex + 1 as rudimentary day number if not in object
+      const dayNum = currentProgram.id
+        ? Number(currentProgram.id)
+        : selectedDayIndex + 1; // Or parse from dayTitle?
 
-    navigation.navigate('WorkoutPlayer', {
-      playlist,
-      onProgressUpdate: setWorkoutProgress,
-      initialIndex: startIndex,
-    });
+      // programId might be string 'beginner' or ID. Backend needs to handle.
+      // Assuming backend works with ID passed.
+      // Or we pass programId from route params.
+      // If programId is string, backend service handles lookup?
+      // Let's pass route.params.programId as is.
+      // Note: workoutService expects number, but frontend handles string IDs for levels.
+      // We'll cast to any to suppress TS error if needed or rely on backend to accept string
+      const session = await workoutService.startSession(
+        programId as any,
+        dayNum,
+      );
+
+      // Use the session ID returned for tracking later
+      const sessionId = session.data?.sessionId || session.sessionId; // Adjust based on response
+
+      let startIndex = 0;
+      if (workoutProgress > 0 && workoutProgress < 100) {
+        startIndex = Math.floor((workoutProgress / 100) * playlist.length);
+        if (startIndex >= playlist.length) startIndex = playlist.length - 1;
+      }
+
+      navigation.navigate('WorkoutPlayer', {
+        playlist,
+        onProgressUpdate: setWorkoutProgress,
+        initialIndex: startIndex,
+        sessionId: sessionId, // Pass session ID to player
+      });
+    } catch (err) {
+      console.error('Failed to start workout session', err);
+      Alert.alert(
+        'Error',
+        'Could not start workout session. Please try again.',
+      );
+    }
   };
 
   return (
