@@ -6,6 +6,7 @@ import {
   ScrollView,
   StatusBar,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -21,13 +22,48 @@ import { programService } from '../services/api';
 const programThumb = require('../assets/images/splash.png');
 
 interface ProgramData {
-  id: string | number;
+  id: string;
   title: string;
-  name?: string; // Backend might use name
+  name?: string;
   description: string;
   image?: any;
   isLocked?: boolean;
 }
+
+const DUMMY_PROGRAMS: ProgramData[] = [
+  {
+    id: 'prog_beginner',
+    title: 'BEGINNER',
+    description:
+      'Begin your fitness journey with simple, foundational exercises. The perfect way to start.',
+    image: programThumb,
+    isLocked: false,
+  },
+  {
+    id: 'prog_intermediate',
+    title: 'INTERMEDIET',
+    description:
+      'Take your fitness to the next level with increased intensity and complexity. Perfect for progress.',
+    image: programThumb,
+    isLocked: false,
+  },
+  {
+    id: 'prog_advanced',
+    title: 'ADVANCED',
+    description:
+      'Push your limits with high-intensity workouts designed for experienced athletes.',
+    image: programThumb,
+    isLocked: false,
+  },
+  {
+    id: 'prog_custom',
+    title: 'MY PROGRAM',
+    description:
+      'Customized routine tailored specifically to your personal goals and preferences.',
+    image: programThumb,
+    isLocked: false,
+  },
+];
 
 const BackArrowIcon = () => (
   <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -40,7 +76,7 @@ const BackArrowIcon = () => (
 
 const WorkoutProgramsScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const [selectedId, setSelectedId] = useState<string | number>('beginner');
+  const [selectedId, setSelectedId] = useState<string>('prog_beginner');
   const [programs, setPrograms] = useState<ProgramData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,24 +85,28 @@ const WorkoutProgramsScreen: React.FC = () => {
   }, []);
 
   const fetchPrograms = async () => {
+    setLoading(true);
     try {
       const response = await programService.getAllPrograms();
-      // Assuming response.data is the array or response itself is the array
-      // Check structure from other responses. getUserDashboard was response.data.
-      // Adjust if needed.
-      if (response && response.data) {
-        // Map backend fields if necessary
+
+      console.log('🔍 API Programs:', JSON.stringify(response, null, 2));
+
+      if (response && Array.isArray(response.data)) {
         const formatted = response.data.map((p: any) => ({
           id: p.id,
           title: p.name || p.title,
-          description: p.description,
-          image: programThumb, // Fallback for now if backend doesn't send image
+          description: p.description || 'No description',
+          image: programThumb,
           isLocked: false,
         }));
         setPrograms(formatted);
+      } else {
+        console.warn('Format data program salah, gunakan dummy.');
+        setPrograms(DUMMY_PROGRAMS);
       }
     } catch (error) {
-      console.error('Failed to fetch programs', error);
+      console.error('Failed to fetch programs, using DUMMY data.', error);
+      setPrograms(DUMMY_PROGRAMS);
     } finally {
       setLoading(false);
     }

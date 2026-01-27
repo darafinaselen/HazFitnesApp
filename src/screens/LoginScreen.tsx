@@ -132,7 +132,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       const refreshToken = tokens?.refreshToken;
 
       if (accessToken) {
-        const userUuid = response?.data?.user?.uuid || response?.user?.uuid;
+        const userData = response?.data?.user || response?.user;
+
+        const userUuid =
+          userData?.userUuid || userData?.user_id || userData?.uuid;
         if (!userUuid) {
           throw new Error('User UUID not found in the response.');
         }
