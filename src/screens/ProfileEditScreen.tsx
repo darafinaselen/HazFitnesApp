@@ -24,6 +24,8 @@ import {
 } from '../components/profil/ProfileIcons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { userService } from '../services/api';
+import { UpdateUserRequest, Gender } from '../types/api';
 
 const ProfileEditScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -75,20 +77,41 @@ const ProfileEditScreen: React.FC = () => {
     return healthConditions.join(' & ');
   };
 
-  const handleSave = () => {
-    console.log({
-      name,
-      email,
-      gender,
-      age,
-      height,
-      weight,
-      goal,
-      health: getHealthDisplayText(),
-    });
-    Alert.alert('Success', 'Profile updated!', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Map gender to API format
+      const genderMap: Record<string, Gender> = {
+        Male: 'MALE',
+        Female: 'FEMALE',
+      };
+
+      const updateData: UpdateUserRequest = {
+        name,
+        email,
+        gender: genderMap[gender] || 'OTHER',
+        age: age,
+        height: height,
+        weight: weight,
+      };
+
+      console.log('Updating profile:', updateData);
+      await userService.updateProfile(updateData);
+
+      Alert.alert('Success', 'Profile updated!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
+      const message =
+        error.response?.data?.message ||
+        'Failed to update profile. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDiscard = () => {

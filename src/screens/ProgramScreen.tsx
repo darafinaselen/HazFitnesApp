@@ -27,9 +27,13 @@ import ProgramSection from '../components/program/ProgramSection';
 import DayDropdown from '../components/program/DayDropdown';
 
 // Data & Types
-// import { getProgramDataByLevel } from '../data/programData'; // REMOVED LOCAL DATA
-import { ProgramDay } from '../types/programTypes';
+import { ProgramDay, Exercise } from '../types/programTypes';
 import { programService, workoutService } from '../services/api';
+import {
+  SanoVitaProgramScheduleData,
+  SanoVitaExerciseItem,
+  SanoVitaWorkoutSection,
+} from '../types/api';
 
 // Enable LayoutAnimation for Android
 if (
@@ -43,12 +47,13 @@ const ProgramScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Program'>>();
 
-  const programId = route.params?.programId || 'beginner';
+  const programId = route.params?.programId || 1; // Default to 1 if not provided
   const programTitle = route.params?.programTitle || 'BEGINNER';
 
   // State
-  // Initial state as empty array, wait for fetch
   const [programData, setProgramData] = useState<ProgramDay[]>([]);
+  const [scheduleData, setScheduleData] =
+    useState<SanoVitaProgramScheduleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
@@ -61,17 +66,78 @@ const ProgramScreen: React.FC = () => {
   const [workoutProgress, setWorkoutProgress] = useState(0);
 
   useEffect(() => {
-    fetchProgramSchedule();
+    fetchProgramSchedule(selectedDayIndex + 1);
   }, [programId]);
 
-  const fetchProgramSchedule = async () => {
+  /**
+   * Transform SanoVita exercise item to local Exercise format
+   */
+  const transformExercise = (item: SanoVitaExerciseItem): Exercise => ({
+    id: item.id,
+    name: item.name,
+    duration: item.duration_seconds,
+    image: item.image_url
+      ? { uri: item.image_url }
+      : require('../assets/images/splash.png'),
+    video: { uri: '' }, // Backend doesn't provide video URL in schedule
+    description: '',
+  });
+
+  /**
+   * Transform SanoVita schedule response to ProgramDay[] format
+   */
+  const transformScheduleToProgram = (
+    data: SanoVitaProgramScheduleData,
+  ): ProgramDay[] => {
+    // Create a ProgramDay for each day in schedule_summary
+    return data.schedule_summary.map((daySummary, index) => {
+      const isCurrentDay = daySummary.day_id === data.current_day_detail.day_id;
+
+      // For current day, use the detailed workout sections
+      let warmUp: Exercise[] = [];
+      let exercises: Exercise[] = [];
+      let coolDown: Exercise[] = [];
+
+      if (isCurrentDay && data.current_day_detail.workout_sections) {
+        data.current_day_detail.workout_sections.forEach(
+          (section: SanoVitaWorkoutSection) => {
+            const transformedExercises =
+              section.exercises.map(transformExercise);
+
+            const sectionName = section.section_name.toUpperCase();
+            if (sectionName.includes('WARM')) {
+              warmUp = transformedExercises;
+            } else if (sectionName.includes('COOL')) {
+              coolDown = transformedExercises;
+            } else {
+              exercises = [...exercises, ...transformedExercises];
+            }
+          },
+        );
+      }
+
+      return {
+        id: daySummary.day_id,
+        dayTitle: daySummary.label,
+        subtitle: `${daySummary.exercise_count} exercises • ${daySummary.duration_minutes} min`,
+        warmUp,
+        exercises,
+        coolDown,
+      };
+    });
+  };
+
+  const fetchProgramSchedule = async (day: number = 1) => {
     setLoading(true);
     try {
-      const response = await programService.getProgramSchedule(programId);
-      // Assuming response.data is ProgramDay[] or has to be mapped
-      // Backend should be returning structure compatible with UI.
+      const response = await programService.getProgramSchedule(programId, day);
+
       if (response && response.data) {
-        setProgramData(response.data);
+        setScheduleData(response.data);
+        const transformedData = transformScheduleToProgram(response.data);
+        setProgramData(transformedData);
+      } else {
+        console.warn('ProgramSchedule: Unexpected data format', response);
       }
     } catch (error) {
       console.error('Failed to fetch schedule', error);
@@ -79,6 +145,16 @@ const ProgramScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * Fetch specific day detail when user selects a different day
+   */
+  const handleSelectDay = async (index: number) => {
+    setSelectedDayIndex(index);
+    setDropdownOpen(false);
+    // Fetch the selected day's details
+    await fetchProgramSchedule(index + 1);
   };
 
   // Handle loading state before accessing currentProgram
@@ -171,26 +247,17 @@ const ProgramScreen: React.FC = () => {
 
     try {
       // Start session in backend
-      // We need dayNumber (e.g., currentProgram.day or derived from index + 1)
-      // Using selectedDayIndex + 1 as rudimentary day number if not in object
-      const dayNum = currentProgram.id
-        ? Number(currentProgram.id)
-        : selectedDayIndex + 1; // Or parse from dayTitle?
+      // Use the day_id from current program which corresponds to workoutSessionId
+      const workoutSessionId = currentProgram.id;
 
-      // programId might be string 'beginner' or ID. Backend needs to handle.
-      // Assuming backend works with ID passed.
-      // Or we pass programId from route params.
-      // If programId is string, backend service handles lookup?
-      // Let's pass route.params.programId as is.
-      // Note: workoutService expects number, but frontend handles string IDs for levels.
-      // We'll cast to any to suppress TS error if needed or rely on backend to accept string
+      // programId is already numeric from route params
       const session = await workoutService.startSession(
-        programId as any,
-        dayNum,
+        programId,
+        workoutSessionId,
       );
 
       // Use the session ID returned for tracking later
-      const sessionId = session.data?.sessionId || session.sessionId; // Adjust based on response
+      const sessionId = session.data?.sessionId || (session as any).sessionId;
 
       let startIndex = 0;
       if (workoutProgress > 0 && workoutProgress < 100) {
@@ -203,7 +270,7 @@ const ProgramScreen: React.FC = () => {
         onProgressUpdate: setWorkoutProgress,
         initialIndex: startIndex,
         sessionId: sessionId, // Pass session ID to player
-      });
+      } as any);
     } catch (err) {
       console.error('Failed to start workout session', err);
       Alert.alert(
@@ -240,10 +307,7 @@ const ProgramScreen: React.FC = () => {
             isOpen={isDropdownOpen}
             selectedDayIndex={selectedDayIndex}
             onToggle={() => setDropdownOpen(!isDropdownOpen)}
-            onSelectDay={index => {
-              setSelectedDayIndex(index);
-              setDropdownOpen(false);
-            }}
+            onSelectDay={handleSelectDay}
           />
 
           {/* Sections */}

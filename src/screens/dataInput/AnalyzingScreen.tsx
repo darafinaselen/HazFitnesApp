@@ -15,6 +15,7 @@ import { FONT_FAMILY, FONT_SIZE } from '../../constants/fonts';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
 import { recommendationService } from '../../services/api';
+import { GenerateRecommendationRequest, YesNo } from '../../types/api';
 
 const CIRCLE_SIZE = 200;
 const STROKE_WIDTH = 15;
@@ -59,19 +60,19 @@ const AnalyzingScreen: React.FC<Props> = ({ navigation, route }) => {
         console.log('Raw Data Input:', rawData);
 
         // --- MAPPING DATA  ---
-        const sex =
+        const sex: 'Male' | 'Female' =
           rawData.gender && rawData.gender.toLowerCase() === 'female'
             ? 'Female'
             : 'Male';
-        const hypertension = rawData.hypertension ? 'Yes' : 'No';
-        const diabetes = rawData.diabetes ? 'Yes' : 'No';
+        const hypertension: YesNo = rawData.hypertension ? 'Yes' : 'No';
+        const diabetes: YesNo = rawData.diabetes ? 'Yes' : 'No';
         let heightVal = Number(rawData.height);
         //convert cm to m
         if (heightVal > 3) {
           heightVal = heightVal / 100;
         }
 
-        const requestBody = {
+        const requestBody: GenerateRecommendationRequest = {
           sex: sex,
           age: Number(rawData.age),
           height: heightVal,

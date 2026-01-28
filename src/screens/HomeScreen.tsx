@@ -27,6 +27,7 @@ import {
 import { SmallStatCard, MediumStatCard } from '../components/StatCards';
 import DailyTargetChart, { DailyData } from '../components/DailyTargetChart';
 import { userService } from '../services/api';
+import { DashboardResponse } from '../types/api';
 
 const userProfileImg = require('../assets/images/splash.png');
 const squatBannerImg = require('../assets/images/splash.png');
@@ -58,42 +59,10 @@ const squatBannerImg = require('../assets/images/splash.png');
 //   ] as DailyData[],
 // };
 
-interface DashboardData {
-  user: {
-    firstName: string;
-    avatar: string | null;
-  };
-  dailyStats: {
-    totalMinutes: number;
-    caloriesBurned: number;
-    workoutsCompleted: number;
-    steps: {
-      current: number;
-      target: number;
-      percentage: number;
-    };
-    streak: number;
-  };
-  weeklyProgress: {
-    chartData: {
-      day: string;
-      value: number;
-      isToday: boolean;
-    }[];
-    consistency: string;
-  };
-  activePlan: {
-    id: number;
-    title: string;
-    progress: string;
-    nextSessionDuration: number;
-  } | null;
-}
-
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 

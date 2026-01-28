@@ -16,16 +16,18 @@ import ProgramSelectionCard from '../components/ProgramSelectionCard';
 import { FONT_FAMILY, FONT_SIZE } from '../constants/fonts';
 import Svg, { Path } from 'react-native-svg';
 import { programService } from '../services/api';
+import { SanoVitaProgramListItem } from '../types/api';
 
 // --- Placeholder Image ---
 const programThumb = require('../assets/images/splash.png');
 
 interface ProgramData {
   id: string | number;
+  numericId: number; // Store numeric ID for API calls
   title: string;
-  name?: string; // Backend might use name
   description: string;
   image?: any;
+  icon_url?: string;
   isLocked?: boolean;
 }
 
@@ -51,19 +53,28 @@ const WorkoutProgramsScreen: React.FC = () => {
   const fetchPrograms = async () => {
     try {
       const response = await programService.getAllPrograms();
-      // Assuming response.data is the array or response itself is the array
-      // Check structure from other responses. getUserDashboard was response.data.
-      // Adjust if needed.
+      // Backend returns SanoVita format: { id: "prog_1", title: "BEGINNER", ... }
       if (response && response.data) {
-        // Map backend fields if necessary
-        const formatted = response.data.map((p: any) => ({
-          id: p.id,
-          title: p.name || p.title,
-          description: p.description,
-          image: programThumb, // Fallback for now if backend doesn't send image
-          isLocked: false,
-        }));
+        const formatted: ProgramData[] = response.data.map(
+          (p: SanoVitaProgramListItem) => {
+            // Extract numeric ID from "prog_X" format
+            const numericId = parseInt(p.id.replace('prog_', ''), 10) || 1;
+            return {
+              id: p.id,
+              numericId,
+              title: p.title,
+              description: p.description,
+              icon_url: p.icon_url,
+              image: p.icon_url ? { uri: p.icon_url } : programThumb,
+              isLocked: false,
+            };
+          },
+        );
         setPrograms(formatted);
+        // Set first program as selected if available
+        if (formatted.length > 0) {
+          setSelectedId(formatted[0].id);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch programs', error);
@@ -75,8 +86,9 @@ const WorkoutProgramsScreen: React.FC = () => {
   const handleSelectProgram = (program: ProgramData) => {
     setSelectedId(program.id);
 
+    // Pass numericId for API calls, but keep string id for display
     navigation.navigate('Program', {
-      programId: program.id,
+      programId: program.numericId, // Use numeric ID for backend
       programTitle: program.title,
     });
   };

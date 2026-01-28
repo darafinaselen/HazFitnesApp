@@ -21,6 +21,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { authService } from '../services/api';
 import { SessionManager } from '../services/session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthResponse } from '../types/api';
 
 const logoImage = require('../assets/images/splash.png');
 
@@ -124,19 +125,22 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       console.log('--- LOGIN ATTEMPT ---');
       console.log({ identifier });
 
-      const response: any = await authService.login(identifier, password);
+      const response = await authService.login(identifier, password);
       console.log('Login Response:', response);
 
-      const tokens = response?.data?.tokens || response?.tokens;
+      // Backend response structure: { success: true, data: { user, tokens } }
+      const authData = response?.data as AuthResponse;
+      const tokens = authData?.tokens;
+      const user = authData?.user;
       const accessToken = tokens?.accessToken;
       const refreshToken = tokens?.refreshToken;
 
-      if (accessToken) {
-        const userUuid = response?.data?.user?.uuid || response?.user?.uuid;
-        if (!userUuid) {
-          throw new Error('User UUID not found in the response.');
-        }
-        await SessionManager.saveSession(accessToken, refreshToken, userUuid);
+      if (accessToken && user?.userUuid) {
+        await SessionManager.saveSession(
+          accessToken,
+          refreshToken,
+          user.userUuid,
+        );
         console.log('✅ Session Saved via Manager');
 
         await AsyncStorage.setItem('has_onboarded', 'true');
@@ -148,7 +152,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           },
         ]);
       } else {
-        Alert.alert('Login Failed', 'No access token received.');
+        Alert.alert('Login Failed', 'Invalid response from server.');
       }
     } catch (error: any) {
       console.error('Login Error:', error);

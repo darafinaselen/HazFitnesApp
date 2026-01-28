@@ -24,6 +24,7 @@ import {
   LogoutIcon,
 } from '../components/profil/ProfileIcons';
 import { Linking, Alert } from 'react-native';
+import { authService } from '../services/api';
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -78,12 +79,17 @@ const ProfileScreen: React.FC = () => {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => {
-          // TODO: Clear Auth Token / Storage here
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
+        onPress: async () => {
+          try {
+            await authService.logout();
+          } catch (error) {
+            console.error('Logout error:', error);
+          } finally {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          }
         },
       },
     ]);
