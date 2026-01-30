@@ -130,7 +130,7 @@ const WorkoutProgramsScreen: React.FC = () => {
 
     // Pass numericId for API calls, but keep string id for display
     navigation.navigate('Program', {
-      programId: program.numericId, // Use numeric ID for backend
+      programId: program.numericId.toString(), // Use numeric ID for backend
       programTitle: program.title,
     });
   };
