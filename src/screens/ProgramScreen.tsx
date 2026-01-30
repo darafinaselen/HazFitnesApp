@@ -21,8 +21,6 @@ import CustomBottomBar from '../components/CustomBottomBar';
 import PrimaryButton from '../components/PrimaryButton';
 import colors from '../constants/color';
 import { FONT_FAMILY } from '../constants/fonts';
-
-// Components
 import ProgramSection from '../components/program/ProgramSection';
 import DayDropdown from '../components/program/DayDropdown';
 
@@ -57,12 +55,9 @@ const ProgramScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
-
-  // Section States
   const [isWarmUpActive, setWarmUpActive] = useState(true);
   const [isWorkoutActive, setWorkoutActive] = useState(true);
   const [isCoolDownActive, setCoolDownActive] = useState(true);
-
   const [workoutProgress, setWorkoutProgress] = useState(0);
 
   useEffect(() => {
@@ -186,6 +181,9 @@ const ProgramScreen: React.FC = () => {
   }
 
   const currentProgram = programData[selectedDayIndex];
+  const warmUpData = currentProgram?.warmUp || [];
+  const mainWorkoutData = currentProgram?.exercises || [];
+  const coolDownData = currentProgram?.coolDown || [];
 
   // Helper: Determine Workout Type Name
   const getWorkoutType = () => {
@@ -196,52 +194,29 @@ const ProgramScreen: React.FC = () => {
   const workoutType = getWorkoutType();
 
   const handleUpdateDuration = (id: string, newDuration: number) => {
-    setProgramData(prevData =>
-      prevData.map(day => ({
-        ...day,
-        warmUp: day.warmUp.map(item =>
-          item.id === id ? { ...item, duration: newDuration } : item,
-        ),
-        exercises: day.exercises.map(item =>
-          item.id === id ? { ...item, duration: newDuration } : item,
-        ),
-        coolDown: day.coolDown.map(item =>
-          item.id === id ? { ...item, duration: newDuration } : item,
-        ),
-      })),
-    );
+    console.log(`Update duration request: ID ${id} -> ${newDuration}`);
   };
 
   const handleStartWorkout = async () => {
     let playlist: any[] = [];
-
     if (isWarmUpActive)
       playlist = [
         ...playlist,
-        ...currentProgram.warmUp.map(item => ({
-          ...item,
-          category: 'WARM UP',
-        })),
+        ...warmUpData.map(i => ({ ...i, category: 'WARM UP' })),
       ];
     if (isWorkoutActive)
       playlist = [
         ...playlist,
-        ...currentProgram.exercises.map(item => ({
-          ...item,
-          category: workoutType || 'EXERCISE',
-        })),
+        ...mainWorkoutData.map(i => ({ ...i, category: workoutType })),
       ];
     if (isCoolDownActive)
       playlist = [
         ...playlist,
-        ...currentProgram.coolDown.map(item => ({
-          ...item,
-          category: 'COOL DOWN',
-        })),
+        ...coolDownData.map(i => ({ ...i, category: 'COOL DOWN' })),
       ];
 
     if (playlist.length === 0) {
-      Alert.alert('Please select at least one section!');
+      Alert.alert('Info', 'Pilih minimal satu sesi latihan!');
       return;
     }
 
@@ -259,16 +234,12 @@ const ProgramScreen: React.FC = () => {
       // Use the session ID returned for tracking later
       const sessionId = session.data?.sessionId || (session as any).sessionId;
 
-      let startIndex = 0;
-      if (workoutProgress > 0 && workoutProgress < 100) {
-        startIndex = Math.floor((workoutProgress / 100) * playlist.length);
-        if (startIndex >= playlist.length) startIndex = playlist.length - 1;
-      }
+      if (!sessionId) throw new Error('No Session ID returned');
 
       navigation.navigate('WorkoutPlayer', {
         playlist,
         onProgressUpdate: setWorkoutProgress,
-        initialIndex: startIndex,
+        initialIndex: 0,
         sessionId: sessionId, // Pass session ID to player
       } as any);
     } catch (err) {
@@ -302,8 +273,19 @@ const ProgramScreen: React.FC = () => {
 
           {/* Dropdown */}
           <DayDropdown
-            currentProgram={currentProgram}
-            programData={programData}
+            currentProgram={
+              {
+                dayTitle: currentProgram.dayTitle,
+                subtitle: currentProgram.subtitle,
+              } as any
+            }
+            programData={(scheduleData?.schedule_summary || []).map(
+              s =>
+                ({
+                  dayTitle: s.label,
+                  totalTime: `${s.duration_minutes} min`,
+                } as any),
+            )}
             isOpen={isDropdownOpen}
             selectedDayIndex={selectedDayIndex}
             onToggle={() => setDropdownOpen(!isDropdownOpen)}
@@ -311,33 +293,38 @@ const ProgramScreen: React.FC = () => {
           />
 
           {/* Sections */}
-          <ProgramSection
-            title="WARM UP"
-            data={currentProgram.warmUp}
-            workoutCategory={workoutType}
-            onUpdateDuration={handleUpdateDuration}
-            isActive={isWarmUpActive}
-            onToggle={setWarmUpActive}
-          />
+          {warmUpData.length > 0 && (
+            <ProgramSection
+              title="WARM UP"
+              data={warmUpData}
+              workoutCategory={workoutType}
+              onUpdateDuration={handleUpdateDuration}
+              isActive={isWarmUpActive}
+              onToggle={setWarmUpActive}
+            />
+          )}
 
-          {/* NOTE: Pada code asli Anda, semua section menggunakan state 'isWarmUpActive'. 
-              Saya perbaiki agar Workout menggunakan 'isWorkoutActive' dan CoolDown menggunakan 'isCoolDownActive'. */}
-          <ProgramSection
-            title="WORKOUT"
-            data={currentProgram.exercises}
-            workoutCategory={workoutType}
-            onUpdateDuration={handleUpdateDuration}
-            isActive={isWorkoutActive}
-            onToggle={setWorkoutActive}
-          />
-          <ProgramSection
-            title="COOL DOWN"
-            data={currentProgram.coolDown}
-            workoutCategory={workoutType}
-            onUpdateDuration={handleUpdateDuration}
-            isActive={isCoolDownActive}
-            onToggle={setCoolDownActive}
-          />
+          {mainWorkoutData.length > 0 && (
+            <ProgramSection
+              title="WORKOUT"
+              data={mainWorkoutData}
+              workoutCategory={workoutType}
+              onUpdateDuration={handleUpdateDuration}
+              isActive={isWorkoutActive}
+              onToggle={setWorkoutActive}
+            />
+          )}
+
+          {coolDownData.length > 0 && (
+            <ProgramSection
+              title="COOL DOWN"
+              data={coolDownData}
+              workoutCategory={workoutType}
+              onUpdateDuration={handleUpdateDuration}
+              isActive={isCoolDownActive}
+              onToggle={setCoolDownActive}
+            />
+          )}
         </ScrollView>
       </SafeAreaView>
 
@@ -364,6 +351,7 @@ const ProgramScreen: React.FC = () => {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#F5F7FA' },
   safeArea: { flex: 1 },
+  centered: { justifyContent: 'center', alignItems: 'center' },
   scrollContent: { padding: 20, overflow: 'visible' },
   headerRow: {
     flexDirection: 'row',

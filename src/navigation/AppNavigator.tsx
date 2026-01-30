@@ -110,6 +110,7 @@ export type RootStackParamList = {
     playlist: any[];
     onProgressUpdate?: (percentage: number) => void;
     initialIndex?: number;
+    sessionId: string;
   };
   StepsTracker: undefined;
   Report: undefined;
