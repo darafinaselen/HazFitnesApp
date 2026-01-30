@@ -19,13 +19,27 @@ import {
   QuitWorkoutRequest,
   WorkoutProgram,
   DifficultyLevel,
+  ReportResponse,
+  CompleteReportResponse,
+  WeightHistoryResponse,
+  WeightRecord,
+  CreateWeightRequest,
+  UpdateWeightRequest,
+  StepsRecord,
+  CreateStepsRequest,
+  UpdateStepsTargetRequest,
+  MonthlyHistoryResponse,
+  PremiumStatusResponse,
+  PremiumApp,
 } from '../types/api';
 
 // ============================================
 // API CLIENT CONFIGURATION
 // ============================================
 
-const API_URL = 'https://fitness.rizaldiabyannata.dev';
+// const API_URL = 'https://fitness.rizaldiabyannata.dev';
+// const API_URL = 'http://localhost:3000';
+const API_URL = 'http://10.181.223.57:3000'; // Local dev (use your IP)
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -407,6 +421,170 @@ export const statisticsService = {
    */
   getWeeklyStats: async (): Promise<ApiResponse<any>> => {
     const response = await api.get<ApiResponse<any>>('/api/v1/statistics/weekly');
+    return response.data;
+  },
+
+  // ========================================
+  // REPORT ENDPOINTS
+  // ========================================
+
+  /**
+   * Get basic report data for Report screen
+   * Contains: summary, steps, streak, weight, height, bmi
+   */
+  getReport: async (): Promise<ApiResponse<ReportResponse>> => {
+    const response = await api.get<ApiResponse<ReportResponse>>('/api/v1/users/report');
+    return response.data;
+  },
+
+  /**
+   * Get complete report (PREMIUM - requires EXERCISE subscription)
+   */
+  getCompleteReport: async (): Promise<ApiResponse<CompleteReportResponse>> => {
+    const response = await api.get<ApiResponse<CompleteReportResponse>>('/api/v1/users/report/complete');
+    return response.data;
+  },
+
+  // ========================================
+  // WEIGHT MANAGEMENT
+  // ========================================
+
+  /**
+   * Get weight history
+   * @param params - Filter by month/year or date range
+   */
+  getWeightHistory: async (params?: {
+    month?: number;
+    year?: number;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }): Promise<ApiResponse<WeightHistoryResponse>> => {
+    const response = await api.get<ApiResponse<WeightHistoryResponse>>('/api/v1/statistics/weight', { params });
+    return response.data;
+  },
+
+  /**
+   * Record a weight entry
+   */
+  createWeightRecord: async (data: CreateWeightRequest): Promise<ApiResponse<WeightRecord>> => {
+    const response = await api.post<ApiResponse<WeightRecord>>('/api/v1/statistics/weight', data);
+    return response.data;
+  },
+
+  /**
+   * Update a weight record
+   */
+  updateWeightRecord: async (recordId: string, data: UpdateWeightRequest): Promise<ApiResponse<WeightRecord>> => {
+    const response = await api.patch<ApiResponse<WeightRecord>>(`/api/v1/statistics/weight/${recordId}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a weight record
+   */
+  deleteWeightRecord: async (recordId: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/api/v1/statistics/weight/${recordId}`);
+    return response.data;
+  },
+
+  // ========================================
+  // STEPS MANAGEMENT
+  // ========================================
+
+  /**
+   * Get steps history
+   * @param params - Filter by date or date range
+   */
+  getStepsHistory: async (params?: {
+    date?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<ApiResponse<StepsRecord[]>> => {
+    const response = await api.get<ApiResponse<StepsRecord[]>>('/api/v1/statistics/steps', { params });
+    return response.data;
+  },
+
+  /**
+   * Record steps for a day
+   */
+  createStepsRecord: async (data: CreateStepsRequest): Promise<ApiResponse<StepsRecord>> => {
+    const response = await api.post<ApiResponse<StepsRecord>>('/api/v1/statistics/steps', data);
+    return response.data;
+  },
+
+  /**
+   * Update daily steps target
+   */
+  updateStepsTarget: async (data: UpdateStepsTargetRequest): Promise<ApiResponse<{ target: number }>> => {
+    const response = await api.patch<ApiResponse<{ target: number }>>('/api/v1/statistics/steps/target', data);
+    return response.data;
+  },
+
+  // ========================================
+  // DAILY & MONTHLY STATS
+  // ========================================
+
+  /**
+   * Get daily statistics
+   * @param date - Optional date string (YYYY-MM-DD), defaults to today
+   */
+  getDailyStats: async (date?: string): Promise<ApiResponse<any>> => {
+    const response = await api.get<ApiResponse<any>>('/api/v1/statistics/daily', {
+      params: date ? { date } : {},
+    });
+    return response.data;
+  },
+
+  /**
+   * Get monthly activity history (for calendar view)
+   */
+  getMonthlyHistory: async (month: number, year: number): Promise<ApiResponse<MonthlyHistoryResponse>> => {
+    const response = await api.get<ApiResponse<MonthlyHistoryResponse>>('/api/v1/users/history/monthly', {
+      params: { month, year },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get period stats (for custom date range)
+   */
+  getPeriodStats: async (startDate: string, endDate: string): Promise<ApiResponse<any>> => {
+    const response = await api.get<ApiResponse<any>>('/api/v1/users/history/period', {
+      params: { startDate, endDate },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get BMI calculation
+   */
+  getBMI: async (): Promise<ApiResponse<{ bmi: number; status: string; height: number; weight: number }>> => {
+    const response = await api.get<ApiResponse<{ bmi: number; status: string; height: number; weight: number }>>('/api/v1/statistics/bmi');
+    return response.data;
+  },
+};
+
+// ============================================
+// PREMIUM SERVICE
+// ============================================
+
+export const premiumService = {
+  /**
+   * Check if user has premium for specific app
+   */
+  checkStatus: async (app: PremiumApp): Promise<ApiResponse<PremiumStatusResponse>> => {
+    const response = await api.get<ApiResponse<PremiumStatusResponse>>('/api/v1/premium/status', {
+      params: { app },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get all active premium subscriptions
+   */
+  getSubscriptions: async (): Promise<ApiResponse<{ subscriptions: Array<{ app: PremiumApp; expiresAt: string }> }>> => {
+    const response = await api.get<ApiResponse<{ subscriptions: Array<{ app: PremiumApp; expiresAt: string }> }>>('/api/v1/premium/subscriptions');
     return response.data;
   },
 };

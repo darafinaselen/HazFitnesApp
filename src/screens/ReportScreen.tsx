@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -29,82 +31,152 @@ import {
   HeightChartCard,
   BMIChartCard,
 } from '../components/ReportCharts';
-import { calculateBMI, BmiLevel } from '../utils/bmiHelper';
+import { BmiLevel } from '../utils/bmiHelper';
 import { DailyData } from '../components/DailyTargetChart';
+import { statisticsService } from '../services/api';
+import { ReportResponse, BmiStatus, WeightRecord } from '../types/api';
+import PremiumGate from '../components/PremiumGate';
 
-// --- DUMMY DATA (Simulation Database) ---
-const USER_DATA = {
+// --- DEFAULT DATA (Fallback when API fails) ---
+const DEFAULT_DATA = {
   user: {
-    name: 'MEECHEL BERNANDO',
-    minutes: 45, // Total menit workout hari ini
-    calories: 3115, // Total kalori hari ini
-    workoutCount: 20, // Total workout yang sudah selesai
+    minutes: 0,
+    calories: 0,
+    workoutCount: 0,
     height: 170,
   },
   steps: {
-    current: 2500, // Langkah hari ini
-    target: 5000, // Target langkah harian
+    current: 0,
+    target: 5000,
   },
   streak: {
-    days: 4, // Streak aktif saat ini (4 hari)
+    days: 0,
   },
-  weightHistory: [
-    { date: '2025-11-01', value: 50.5 },
-    { date: '2025-11-15', value: 49.8 },
-    { date: '2025-12-07', value: 50.0 },
-  ],
-  // Data Chart: Value (Total Kalori Harian) vs Target (dari AI)
-  weeklyHistory: [
-    { day: 'SUN', value: 1200, target: 2000 }, // value dalam Kcal
-    { day: 'MON', value: 2100, target: 2000 },
-    { day: 'TUE', value: 2500, target: 2200 }, // Target naik
-    { day: 'WED', value: 1000, target: 2200 }, // Masih dikit
-    { day: 'THU', value: 1800, target: 2200 },
-    { day: 'FRI', value: 2300, target: 2200 },
-    { day: 'SAT', value: 500, target: 2200 },
-  ] as DailyData[],
+  weight: {
+    current: 0,
+    change: 0,
+    average: 0,
+  },
+  height: {
+    current: 170,
+  },
+  bmi: {
+    value: 0,
+    status: 'Normal' as BmiStatus,
+  },
 };
 
 const ReportScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  // --- LOGIC CALCULATOR (Frontend Logic) ---
-  const reportData = useMemo(() => {
-    // 1. Get Latest Data
-    const currentWeight =
-      USER_DATA.weightHistory[USER_DATA.weightHistory.length - 1].value;
-    const currentHeight = USER_DATA.user.height;
+  // --- STATE ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<ReportResponse | null>(null);
 
-    // 2. Calculate BMI
-    const bmiResult = calculateBMI(currentWeight, currentHeight);
-    const safeBmiValue = bmiResult ? bmiResult.bmiValue.toFixed(1) : '0.0';
-    const safeBmiLevel: BmiLevel = bmiResult ? bmiResult.level : 'Normal';
+  // --- FETCH DATA FROM API ---
+  const fetchReportData = useCallback(async (showRefresh = false) => {
+    try {
+      if (showRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+      setError(null);
 
-    // 3. Calculate Average Weight
-    const totalWeight = USER_DATA.weightHistory.reduce(
-      (sum, item) => sum + item.value,
-      0,
-    );
-    const avgWeight = (totalWeight / USER_DATA.weightHistory.length).toFixed(2);
+      const response = await statisticsService.getReport();
 
-    // 4. Calculate 30-Day Difference
-    const firstWeight = USER_DATA.weightHistory[0].value;
-    const diff = (currentWeight - firstWeight).toFixed(1);
+      if (response.success && response.data) {
+        setReportData(response.data);
+      } else {
+        setError('Failed to load report data');
+      }
+    } catch (err: any) {
+      console.error('[ReportScreen] Error fetching report:', err);
+      setError(err.response?.data?.message || 'Failed to load report data');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // --- INITIAL LOAD ---
+  useEffect(() => {
+    fetchReportData();
+  }, [fetchReportData]);
+
+  // --- HANDLE REFRESH ---
+  const onRefresh = useCallback(() => {
+    fetchReportData(true);
+  }, [fetchReportData]);
+
+  // --- COMPUTED DATA ---
+  const displayData = useMemo(() => {
+    if (!reportData) {
+      return {
+        summary: DEFAULT_DATA.user,
+        steps: DEFAULT_DATA.steps,
+        streak: DEFAULT_DATA.streak.days,
+        weight: {
+          current: DEFAULT_DATA.weight.current.toFixed(2),
+          average: DEFAULT_DATA.weight.average.toFixed(2),
+          diff: DEFAULT_DATA.weight.change.toFixed(1),
+        },
+        height: DEFAULT_DATA.height.current.toString(),
+        bmi: {
+          value: DEFAULT_DATA.bmi.value.toFixed(1),
+          level: DEFAULT_DATA.bmi.status as BmiLevel,
+        },
+      };
+    }
 
     return {
-      weight: {
-        current: currentWeight.toFixed(2),
-        average: avgWeight,
-        diff: diff,
-        history: USER_DATA.weightHistory,
+      summary: {
+        minutes: reportData.summary.minutes,
+        calories: reportData.summary.calories,
+        workoutCount: reportData.summary.workoutCount,
       },
-      height: currentHeight.toString(),
+      steps: {
+        current: reportData.steps.current,
+        target: reportData.steps.target,
+      },
+      streak: reportData.streak.current,
+      weight: {
+        current: reportData.weight.current.toFixed(2),
+        average: reportData.weight.average.toFixed(2),
+        diff: reportData.weight.change.toFixed(1),
+      },
+      height: reportData.height.current.toString(),
       bmi: {
-        value: safeBmiValue,
-        level: safeBmiLevel,
+        value: reportData.bmi.value.toFixed(1),
+        level: reportData.bmi.status as BmiLevel,
       },
     };
-  }, []);
+  }, [reportData]);
+
+  // --- LOADING STATE ---
+  if (isLoading) {
+    return (
+      <View style={styles.mainContainer}>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle="light-content" backgroundColor={color.blue900} />
+          <View style={styles.headerTitleContainer}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <BackIcon />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>YOUR REPORT</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={color.primary} />
+            <Text style={styles.loadingText}>Loading report...</Text>
+          </View>
+        </SafeAreaView>
+        <CustomBottomBar />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.mainContainer}>
@@ -119,71 +191,98 @@ const ReportScreen: React.FC = () => {
           <View style={{ width: 24 }} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+        {/* Premium Gate - Locks the report content for non-premium users */}
+        <PremiumGate
+          app="EXERCISE"
+          onUpgradePress={() => navigation.navigate('Premium' as any)}
         >
-          {/* STATS ROW 1 */}
-          <View style={styles.statsRow}>
-            <SmallStatCard
-              Icon={ClockIcon}
-              value={`${USER_DATA.user.minutes}`}
-              label="MINUTES"
-            />
-            <SmallStatCard
-              Icon={FireIconCal}
-              value={`${(USER_DATA.user.calories / 1000).toFixed(1)}K KCAL`}
-              label="CAL BURN"
-            />
-            <SmallStatCard
-              Icon={RunIcon}
-              value={`${USER_DATA.user.workoutCount}`}
-              label="WORKOUT"
-            />
-          </View>
-
-          {/* STATS ROW 2 */}
-          <View style={styles.statsRow}>
-            <MediumStatCard
-              Icon={FootIcon}
-              label="STEPS"
-              subLabel={`${USER_DATA.steps.current}/${USER_DATA.steps.target} M`}
-              type="steps"
-              currentSteps={USER_DATA.steps.current}
-              targetSteps={USER_DATA.steps.target}
-              onPress={() => navigation.navigate('StepsTracker')}
-            />
-            <MediumStatCard
-              Icon={FireIconStreak}
-              label="STREAK"
-              subLabel={`${USER_DATA.streak.days} DAYS`}
-              type="streak"
-              streakDays={USER_DATA.streak.days}
-            />
-          </View>
-
-          <DailyTargetChartCard />
-          <WeightChartCard
-            current={reportData.weight.current}
-            last30Days={reportData.weight.diff}
-            average={reportData.weight.average}
-          />
-          <HeightChartCard
-            value={reportData.height}
-            onEdit={() =>
-              navigation.navigate('HeightInput', {
-                currentHeight: reportData.height,
-              })
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                colors={[color.primary]}
+                tintColor={color.primary}
+              />
             }
-          />
+          >
+            {/* ERROR BANNER */}
+            {error && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity onPress={() => fetchReportData()}>
+                  <Text style={styles.retryText}>Tap to retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-          <BMIChartCard
-            value={reportData.bmi.value}
-            level={reportData.bmi.level}
-          />
+            {/* STATS ROW 1 */}
+            <View style={styles.statsRow}>
+              <SmallStatCard
+                Icon={ClockIcon}
+                value={`${displayData.summary.minutes}`}
+                label="MINUTES"
+              />
+              <SmallStatCard
+                Icon={FireIconCal}
+                value={`${(displayData.summary.calories / 1000).toFixed(
+                  1,
+                )}K KCAL`}
+                label="CAL BURN"
+              />
+              <SmallStatCard
+                Icon={RunIcon}
+                value={`${displayData.summary.workoutCount}`}
+                label="WORKOUT"
+              />
+            </View>
 
-          <View style={{ height: 100 }} />
-        </ScrollView>
+            {/* STATS ROW 2 */}
+            <View style={styles.statsRow}>
+              <MediumStatCard
+                Icon={FootIcon}
+                label="STEPS"
+                subLabel={`${displayData.steps.current}/${displayData.steps.target} M`}
+                type="steps"
+                currentSteps={displayData.steps.current}
+                targetSteps={displayData.steps.target}
+                onPress={() => navigation.navigate('StepsTracker')}
+              />
+              <MediumStatCard
+                Icon={FireIconStreak}
+                label="STREAK"
+                subLabel={`${displayData.streak} DAYS`}
+                type="streak"
+                streakDays={displayData.streak}
+              />
+            </View>
+
+            <DailyTargetChartCard />
+            <WeightChartCard
+              current={displayData.weight.current}
+              last30Days={displayData.weight.diff}
+              average={displayData.weight.average}
+              weightHistory={reportData?.weightHistory || []}
+            />
+            <HeightChartCard
+              value={displayData.height}
+              onEdit={() =>
+                navigation.navigate('HeightInput', {
+                  currentHeight: displayData.height,
+                })
+              }
+            />
+
+            <BMIChartCard
+              value={displayData.bmi.value}
+              level={displayData.bmi.level}
+            />
+
+            <View style={{ height: 100 }} />
+          </ScrollView>
+        </PremiumGate>
       </SafeAreaView>
       <CustomBottomBar />
     </View>
@@ -224,6 +323,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 15,
     gap: 8,
+  },
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontFamily: FONT_FAMILY.MontserratMedium,
+    fontSize: 14,
+    color: color.blue900,
+  },
+  // Error State
+  errorBanner: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontFamily: FONT_FAMILY.MontserratMedium,
+    fontSize: 14,
+    color: '#D32F2F',
+    textAlign: 'center',
+  },
+  retryText: {
+    marginTop: 8,
+    fontFamily: FONT_FAMILY.MontserratBold,
+    fontSize: 14,
+    color: color.primary,
+    textDecorationLine: 'underline',
   },
 });
 

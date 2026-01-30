@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,17 @@ import {
   Modal,
   FlatList,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // Wajib install ini
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { FONT_FAMILY } from '../constants/fonts';
 import color from '../constants/color';
 import WeightLineChart from '../components/grafik/WeightLineChart';
-import { weightHistoryData } from '../utils/dummyData';
 import { BackIcon, ChevronRight } from '../components/profil/ProfileIcons';
+import { statisticsService } from '../services/api';
+import { WeightRecord } from '../types/api';
 
 const MONTHS = [
   'January',
@@ -35,34 +38,115 @@ const MONTHS = [
 
 const YEARS = Array.from(new Array(11), (val, index) => 2022 + index);
 
+interface ChartDataPoint {
+  value: number;
+  label: string;
+}
+
 const StatisticsScreen = () => {
   const navigation = useNavigation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
-  // --- LOGIC FILTER ---
-  const filteredData = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+  // --- API STATE ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [weightRecords, setWeightRecords] = useState<WeightRecord[]>([]);
+  const [summary, setSummary] = useState({
+    average: 0,
+    highest: 0,
+    lowest: 0,
+    count: 0,
+  });
 
-    const filtered = weightHistoryData.filter(item => {
-      const itemDate = new Date(item.date);
-      return itemDate.getFullYear() === year && itemDate.getMonth() === month;
-    });
+  // --- FETCH WEIGHT HISTORY ---
+  const fetchWeightHistory = useCallback(
+    async (showRefresh = false) => {
+      try {
+        if (showRefresh) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
+        setError(null);
 
-    filtered.sort(
+        const month = currentDate.getMonth() + 1; // API expects 1-12
+        const year = currentDate.getFullYear();
+
+        const response = await statisticsService.getWeightHistory({
+          month,
+          year,
+        });
+
+        if (response.success) {
+          // Handle both response formats
+          const data = response.data as any;
+          if (Array.isArray(data)) {
+            setWeightRecords(data);
+            // Calculate summary from records
+            if (data.length > 0) {
+              const weights = data.map((r: WeightRecord) => r.weight);
+              setSummary({
+                average: parseFloat(
+                  (
+                    weights.reduce((a: number, b: number) => a + b, 0) /
+                    weights.length
+                  ).toFixed(1),
+                ),
+                highest: Math.max(...weights),
+                lowest: Math.min(...weights),
+                count: data.length,
+              });
+            } else {
+              setSummary({ average: 0, highest: 0, lowest: 0, count: 0 });
+            }
+          } else if (data.records) {
+            setWeightRecords(data.records);
+            setSummary(
+              data.summary || { average: 0, highest: 0, lowest: 0, count: 0 },
+            );
+          }
+        }
+      } catch (err: any) {
+        console.error('[StatisticsScreen] Error fetching weight history:', err);
+        setError(err.response?.data?.message || 'Failed to load weight data');
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [currentDate],
+  );
+
+  // --- FETCH ON MOUNT & DATE CHANGE ---
+  useEffect(() => {
+    fetchWeightHistory();
+  }, [fetchWeightHistory]);
+
+  // --- HANDLE REFRESH ---
+  const onRefresh = useCallback(() => {
+    fetchWeightHistory(true);
+  }, [fetchWeightHistory]);
+
+  // --- TRANSFORM DATA FOR CHART ---
+  const chartData = useMemo<ChartDataPoint[]>(() => {
+    if (weightRecords.length === 0) return [];
+
+    // Sort by date
+    const sorted = [...weightRecords].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
 
-    return filtered.map(item => {
-      const day = new Date(item.date).getDate();
+    return sorted.map(record => {
+      const day = new Date(record.date).getDate();
       return {
-        value: item.weight,
+        value: record.weight,
         label: day.toString().padStart(2, '0'),
       };
     });
-  }, [currentDate]);
+  }, [weightRecords]);
 
   // --- HANDLER GANTI BULAN ---
   const handleSelectMonth = (monthIndex: number) => {
@@ -78,17 +162,6 @@ const StatisticsScreen = () => {
     setCurrentDate(newDate);
     setShowYearPicker(false);
   };
-
-  const maxWeight =
-    filteredData.length > 0 ? Math.max(...filteredData.map(d => d.value)) : 0;
-  const minWeight =
-    filteredData.length > 0 ? Math.min(...filteredData.map(d => d.value)) : 0;
-  const avgWeight =
-    filteredData.length > 0
-      ? (
-          filteredData.reduce((a, b) => a + b.value, 0) / filteredData.length
-        ).toFixed(1)
-      : 0;
 
   const renderPickerModal = (
     visible: boolean,
@@ -123,6 +196,31 @@ const StatisticsScreen = () => {
     </Modal>
   );
 
+  // --- LOADING STATE ---
+  if (isLoading) {
+    return (
+      <View style={styles.mainContainer}>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle="dark-content" backgroundColor="#F5F7FA" />
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.iconBtn}
+            >
+              <BackIcon />
+            </TouchableOpacity>
+            <Text style={styles.title}>STATISTICS</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={color.primary} />
+            <Text style={styles.loadingText}>Loading statistics...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.mainContainer}>
       <SafeAreaView style={styles.safeArea}>
@@ -140,7 +238,27 @@ const StatisticsScreen = () => {
           <View style={{ width: 24 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={[color.primary]}
+              tintColor={color.primary}
+            />
+          }
+        >
+          {/* ERROR BANNER */}
+          {error && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity onPress={() => fetchWeightHistory()}>
+                <Text style={styles.retryText}>Tap to retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={styles.filterRow}>
             {/* MONTH PICKER BUTTON */}
             <TouchableOpacity
@@ -172,11 +290,22 @@ const StatisticsScreen = () => {
           {/* --- CHART SECTION --- */}
           <View style={styles.chartCard}>
             <Text style={styles.cardTitle}>Weight Progress</Text>
-            <WeightLineChart
-              data={filteredData}
-              isMini={false}
-              width={Dimensions.get('window').width - 80}
-            />
+            {chartData.length > 0 ? (
+              <WeightLineChart
+                data={chartData}
+                isMini={false}
+                width={Dimensions.get('window').width - 80}
+              />
+            ) : (
+              <View style={styles.emptyChartContainer}>
+                <Text style={styles.emptyChartText}>
+                  No weight data for this month
+                </Text>
+                <Text style={styles.emptyChartSubtext}>
+                  Record your weight to see progress
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* --- SUMMARY SECTION --- */}
@@ -184,15 +313,15 @@ const StatisticsScreen = () => {
           <View style={styles.summaryContainer}>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Average</Text>
-              <Text style={styles.summaryValue}>{avgWeight} kg</Text>
+              <Text style={styles.summaryValue}>{summary.average} kg</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Highest</Text>
-              <Text style={styles.summaryValue}>{maxWeight} kg</Text>
+              <Text style={styles.summaryValue}>{summary.highest} kg</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Lowest</Text>
-              <Text style={styles.summaryValue}>{minWeight} kg</Text>
+              <Text style={styles.summaryValue}>{summary.lowest} kg</Text>
             </View>
           </View>
         </ScrollView>
@@ -224,6 +353,56 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontFamily: FONT_FAMILY.MontserratMedium,
+    fontSize: 14,
+    color: color.blue900,
+  },
+  // Error
+  errorBanner: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontFamily: FONT_FAMILY.MontserratMedium,
+    fontSize: 14,
+    color: '#D32F2F',
+    textAlign: 'center',
+  },
+  retryText: {
+    marginTop: 8,
+    fontFamily: FONT_FAMILY.MontserratBold,
+    fontSize: 14,
+    color: color.primary,
+    textDecorationLine: 'underline',
+  },
+  // Empty Chart
+  emptyChartContainer: {
+    height: 150,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyChartText: {
+    fontFamily: FONT_FAMILY.MontserratMedium,
+    fontSize: 14,
+    color: '#7B8085',
+  },
+  emptyChartSubtext: {
+    fontFamily: FONT_FAMILY.MontserratRegular,
+    fontSize: 12,
+    color: '#A0A0A0',
+    marginTop: 4,
   },
   header: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import {
   SafeAreaView,
@@ -31,14 +32,17 @@ const ProfileEditScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
 
+  // --- LOADING STATE ---
+  const [isLoading, setIsLoading] = useState(true);
+
   // --- STATE DATA ---
-  const [name, setName] = useState('Abdefi');
-  const [email, setEmail] = useState('abdefijkmnorsv@gmail.com');
-  const [gender, setGender] = useState('Female');
-  const [age, setAge] = useState('19');
-  const [height, setHeight] = useState('170');
-  const [weight, setWeight] = useState('50.0');
-  const [goal, setGoal] = useState('Maintain weight');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [gender, setGender] = useState('');
+  const [age, setAge] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+  const [goal, setGoal] = useState('');
   const [newsletter, setNewsletter] = useState('Yes');
   const [healthConditions, setHealthConditions] = useState<string[]>([]);
 
@@ -53,6 +57,67 @@ const ProfileEditScreen: React.FC = () => {
     goal: ['Gain weight', 'Lose weight', 'Maintain weight'],
     healthList: ['Hypertension', 'Diabetes'],
   };
+
+  // --- FETCH USER DATA ON MOUNT ---
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await userService.getMe();
+
+      if (response.success && response.data) {
+        const userData = response.data;
+
+        // Populate form with user data
+        setName(userData.name || '');
+        setEmail(userData.email || '');
+
+        // Map gender from API format
+        if (userData.gender === 'MALE') setGender('Male');
+        else if (userData.gender === 'FEMALE') setGender('Female');
+        else setGender('');
+
+        setAge(userData.age?.toString() || '');
+        setHeight(userData.height?.replace(' cm', '').replace('cm', '') || '');
+        setWeight(userData.weight?.replace(' kg', '').replace('kg', '') || '');
+
+        // Map goal from API format
+        if (userData.goal) {
+          const goalLower = userData.goal.toLowerCase();
+          if (goalLower.includes('gain')) setGoal('Gain weight');
+          else if (goalLower.includes('lose') || goalLower.includes('loss'))
+            setGoal('Lose weight');
+          else setGoal('Maintain weight');
+        }
+
+        // Parse health conditions
+        if (userData.healthCondition) {
+          const conditions: string[] = [];
+          const healthLower = userData.healthCondition.toLowerCase();
+          if (
+            healthLower.includes('hypertension') ||
+            healthLower.includes('yes')
+          ) {
+            conditions.push('Hypertension');
+          }
+          if (healthLower.includes('diabetes')) {
+            conditions.push('Diabetes');
+          }
+          setHealthConditions(conditions);
+        }
+      }
+    } catch (error: any) {
+      console.error('[ProfileEditScreen] Failed to fetch profile:', error);
+      Alert.alert('Error', 'Failed to load profile data. Please try again.', [
+        { text: 'OK' },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
 
   const openSelector = (type: 'gender' | 'goal' | 'health') => {
     setModalType(type);
@@ -143,6 +208,30 @@ const ProfileEditScreen: React.FC = () => {
       ],
     );
   };
+
+  // --- LOADING STATE ---
+  if (isLoading) {
+    return (
+      <View style={styles.mainContainer}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.headerBtn}
+            >
+              <BackIcon />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={color.primary} />
+            <Text style={styles.loadingText}>Loading profile...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.mainContainer}>
@@ -329,6 +418,19 @@ const ProfileEditScreen: React.FC = () => {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#F5F7FA' },
   safeArea: { flex: 1 },
+
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontFamily: FONT_FAMILY.MontserratMedium,
+    fontSize: 14,
+    color: color.blue900,
+  },
 
   // Header
   header: {

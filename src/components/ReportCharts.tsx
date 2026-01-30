@@ -16,7 +16,7 @@ import BMIScale from './dataInput/BMIScale';
 import { BmiLevel } from '../utils/bmiHelper';
 import WeightLineChart from '../components/grafik/WeightLineChart';
 import { CloseIcon } from './ReportIcons';
-import { weightHistoryData } from '../utils/dummyData';
+import { WeightRecord } from '../types/api';
 
 // --- SHARED WRAPPER ---
 const ProfileCard: React.FC<{
@@ -42,12 +42,15 @@ interface WeightProps {
   current: string;
   last30Days: string;
   average: string;
+  /** Weight history data from API */
+  weightHistory: WeightRecord[];
 }
 
 export const WeightChartCard: React.FC<WeightProps> = ({
   current,
   last30Days,
   average,
+  weightHistory,
 }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [modalVisible, setModalVisible] = React.useState(false);
@@ -58,7 +61,7 @@ export const WeightChartCard: React.FC<WeightProps> = ({
     const currentYear = today.getFullYear();
 
     // 1. Filter hanya bulan & tahun ini
-    const filtered = weightHistoryData
+    const filtered = weightHistory
       .filter(item => {
         const d = new Date(item.date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
@@ -70,7 +73,7 @@ export const WeightChartCard: React.FC<WeightProps> = ({
       value: item.weight,
       label: new Date(item.date).getDate().toString().padStart(2, '0'),
     }));
-  }, []);
+  }, [weightHistory]);
 
   // Mini Chart: Ambil 7 data terakhir dari bulan ini
   const miniChartData = useMemo(() => {

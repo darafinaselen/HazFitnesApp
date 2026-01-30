@@ -294,3 +294,181 @@ export interface WorkoutStats {
   currentStreak: number;
   longestStreak: number;
 }
+
+// ============================================
+// REPORT TYPES (from statistics.schemas.ts)
+// ============================================
+
+export type BmiStatus = 'Underweight' | 'Normal' | 'Overweight' | 'Obese';
+
+export interface ReportResponse {
+  summary: {
+    minutes: number;
+    calories: number;
+    workoutCount: number;
+  };
+  steps: {
+    current: number;
+    target: number;
+  };
+  streak: {
+    current: number;
+    days: boolean[]; // Last 7 days activity
+  };
+  weight: {
+    current: number;
+    change: number;
+    average: number;
+  };
+  height: {
+    current: number;
+  };
+  bmi: {
+    value: number;
+    status: BmiStatus;
+  };
+  /** Weight history for chart display */
+  weightHistory?: WeightRecord[];
+}
+
+export interface CompleteReportResponse {
+  user_id: string;
+  summary: {
+    total_minutes: number;
+    calories_burned: number;
+    calories_burned_display: string;
+    total_workouts: number;
+  };
+  activity_tracking: {
+    steps: {
+      current: number;
+      target: number;
+      unit: string;
+      progress_percentage: number;
+    };
+    streak: {
+      current_days: number;
+      history_dots: boolean[];
+    };
+  };
+  weekly_calendar: {
+    current_date: string;
+    week_start: string;
+    days: Array<{
+      day_name: string;
+      date: number;
+      is_today: boolean;
+    }>;
+  };
+  body_metrics: {
+    weight: {
+      current_value: number;
+      unit: string;
+      last_30_days_change: number;
+      average_value: number;
+    };
+    height: {
+      current_value: number;
+      unit: string;
+    };
+    bmi: {
+      value: number;
+      status_label: string;
+      status_color: string;
+    };
+  };
+}
+
+// ============================================
+// WEIGHT & STEPS TYPES
+// ============================================
+
+export interface WeightRecord {
+  id: string;
+  userId: string;
+  weight: number;
+  date: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WeightHistoryResponse {
+  records: WeightRecord[];
+  summary: {
+    average: number;
+    highest: number;
+    lowest: number;
+    count: number;
+  };
+}
+
+export interface CreateWeightRequest {
+  weight: number;
+  date: string;
+  notes?: string;
+}
+
+export interface UpdateWeightRequest {
+  weight?: number;
+  date?: string;
+  notes?: string;
+}
+
+export interface StepsRecord {
+  id: string;
+  userId: string;
+  steps: number;
+  date: string;
+  target: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateStepsRequest {
+  steps: number;
+  date: string;
+  target?: number;
+}
+
+export interface UpdateStepsTargetRequest {
+  target: number;
+}
+
+// ============================================
+// MONTHLY HISTORY TYPES
+// ============================================
+
+export interface MonthlyHistoryResponse {
+  month: number;
+  year: number;
+  activeDates: number[];
+  weeklyStats?: {
+    startDate: string;
+    endDate: string;
+    totalExercises: number;
+    totalCalories: number;
+  };
+}
+
+// ============================================
+// PREMIUM TYPES
+// ============================================
+
+export type PremiumApp = 'FOOD' | 'EXERCISE' | 'EMOTION';
+
+export interface UserPremium {
+  id: number;
+  userId: number;
+  app: PremiumApp;
+  startAt: string;
+  endAt: string;
+  source: string;
+  refId: string;
+}
+
+export interface PremiumStatusResponse {
+  isPremium: boolean;
+  app: PremiumApp;
+  expiresAt?: string;
+}
